@@ -1,0 +1,52 @@
+name: AI digest
+
+on:
+  schedule:
+    # 02:47 UTC = 08:47 по Бишкеку (UTC+6). GitHub часто запускает с задержкой 5–20 минут,
+    # так что дайджест придёт примерно к 9 утра. Время меняется здесь (часы в UTC!).
+    - cron: "47 2 * * *"
+  workflow_dispatch: # кнопка «Run workflow» для ручного запуска
+
+permissions:
+  contents: write # чтобы сохранять data/state.json (список уже отправленного)
+
+concurrency:
+  group: ai-digest
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build and send digest
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL || 'claude-sonnet-5-5' }}
+          TZ_OFFSET_HOURS: "6"
+        run: python digest.py
+
+      - name: Save state
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/state.json
+          if git diff --cached --quiet; then
+            echo "Нечего сохранять"
+          else
+            git commit -m "digest: update seen items"
+            git push
+          fi

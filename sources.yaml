@@ -1,0 +1,92 @@
+# ───────────── Настройки дайджеста ─────────────
+# Меняй прямо здесь на GitHub (кнопка ✏️), бот подхватит со следующего запуска.
+
+window_hours: 36        # брать материалы не старше N часов (с запасом: повторы всё равно отсекаются)
+max_items: 12           # максимум пунктов в дайджесте
+per_source_limit: 15    # сколько максимум брать из одного RSS
+max_candidates: 250     # сколько всего кандидатов отдавать Claude на отбор
+send_empty: true        # слать ли сообщение «сегодня ничего стоящего»
+
+# ───────────── RSS-ленты ─────────────
+# Любой сайт с RSS/Atom можно добавить сюда. Сломанная лента просто пропускается.
+rss:
+  # Официальные блоги AI-лабораторий
+  - name: OpenAI
+    url: https://openai.com/news/rss.xml
+  - name: Anthropic
+    url: https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_news.xml
+  - name: Google DeepMind
+    url: https://deepmind.google/blog/rss.xml
+  - name: Google AI
+    url: https://blog.google/technology/ai/rss/
+  - name: Hugging Face Blog
+    url: https://huggingface.co/blog/feed.xml
+  - name: GitHub Blog (AI)
+    url: https://github.blog/ai-and-ml/feed/
+
+  # Люди и рассылки, которые пишут по делу
+  - name: Simon Willison
+    url: https://simonwillison.net/atom/everything/
+  - name: Latent Space
+    url: https://www.latent.space/feed
+
+  # Новости
+  - name: TechCrunch AI
+    url: https://techcrunch.com/category/artificial-intelligence/feed/
+    limit: 10
+
+  # На русском
+  - name: Хабр · ИИ
+    url: https://habr.com/ru/rss/hubs/artificial_intelligence/articles/?fl=ru
+  - name: Хабр · Машинное обучение
+    url: https://habr.com/ru/rss/hubs/machine_learning/articles/?fl=ru
+
+  # Сообщество (Reddit иногда блокирует GitHub — тогда просто пропустится)
+  - name: r/LocalLLaMA
+    url: https://www.reddit.com/r/LocalLLaMA/top/.rss?t=day
+    limit: 10
+
+  # Пример: релизы конкретного инструмента на GitHub
+  # - name: Ollama releases
+  #   url: https://github.com/ollama/ollama/releases.atom
+  #   kind: code
+
+# ───────────── YouTube ─────────────
+# Пиши @handle канала (как в адресе youtube.com/@...) или channel_id (UC...). Кавычки обязательны.
+youtube:
+  - "@Fireship"
+  - "@AndrejKarpathy"
+  - "@TwoMinutePapers"
+  - "@aiexplained-official"
+  - "@YannicKilcher"
+  - "@matthew_berman"
+  - "@samwitteveenai"
+  - "@IndyDevDan"
+  - "@t3dotgg"
+  - "@anthropic-ai"
+  - "@OpenAI"
+  - "@GoogleDeepMind"
+
+# ───────────── Hacker News ─────────────
+# Берём истории за сутки с рейтингом не ниже min_points и с AI-словами в заголовке.
+hackernews:
+  min_points: 80
+  limit: 25
+  # регулярные выражения, регистр не важен; каждое — в одинарных кавычках
+  keywords: ['AI', 'LLMs?', 'GPT\S*', 'ChatGPT', 'OpenAI', 'Anthropic', 'Claude', 'Gemini', 'DeepMind',
+             'Mistral', 'Llama', 'Qwen', 'DeepSeek', 'Grok', 'Copilot', 'Cursor', 'Codex', 'agents?',
+             'agentic', 'MCP', 'RAG', 'embeddings?', 'transformers?', 'diffusion', 'neural',
+             'machine learning', 'ML', 'inference', 'fine-?tun\w*', 'prompt\w*', 'Hugging ?Face',
+             'Ollama', 'vibe coding', 'language models?', 'GPUs?', 'Nvidia']
+
+# ───────────── GitHub: новые набирающие звёзды репозитории ─────────────
+github:
+  topics: [llm, ai-agents, mcp, generative-ai, rag]
+  days: 7           # созданные за последние N дней
+  min_stars: 100
+  limit: 8
+
+# ───────────── Hugging Face Daily Papers ─────────────
+hf_papers:
+  min_upvotes: 25
+  limit: 6
