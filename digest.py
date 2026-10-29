@@ -558,8 +558,10 @@ def find_chat_id(state: dict) -> str | None:
             state["chat_id"] = chat["id"]
             return str(chat["id"])
     kinds = sorted({k for u in res.get("result", []) for k in u if k != "update_id"})
+    me = tg_api("getMe").get("result") or {}
     log(f"Боту ещё никто не писал (или это было больше суток назад; обновлений: {len(res.get('result', []))} {kinds}). "
-        "Открой бота в Telegram, отправь ему любое сообщение и запусти снова.", "error")
+        f"Открой бота @{me.get('username', '?')} (t.me/{me.get('username', '')}) в Telegram, "
+        "отправь ему любое сообщение и запусти снова.", "error")
     return None
 
 
