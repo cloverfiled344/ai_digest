@@ -62,8 +62,11 @@ MONTHS = ["января", "февраля", "марта", "апреля", "ма�
 
 # ───────────────────────────── утилиты ─────────────────────────────
 
-def log(msg: str) -> None:
+def log(msg: str, level: str | None = None) -> None:
     print(msg, file=sys.stderr, flush=True)
+    if level and os.getenv("GITHUB_ACTIONS"):
+        # видно прямо в сводке запуска на GitHub, без открытия логов
+        print(f"::{level}::{msg.strip()}", flush=True)
 
 
 def now_utc() -> dt.datetime:
@@ -161,7 +164,7 @@ def collect_rss(cfg: dict, since: dt.datetime, per_source: int) -> list[dict]:
             log(f"  ✓ {src['name']}: {len(got)}")
             items += got
         except Exception as e:
-            log(f"  ✗ {src['name']}: {e}")
+            log(f"  ✗ {src['name']}: {e}", "warning")
     return items
 
 
@@ -201,7 +204,7 @@ def collect_youtube(cfg: dict, since: dt.datetime, state: dict) -> list[dict]:
             log(f"  ✓ YouTube {handle}: {len(got)}")
             items += got
         except Exception as e:
-            log(f"  ✗ YouTube {handle}: {e}")
+            log(f"  ✗ YouTube {handle}: {e}", "warning")
     return items
 
 
@@ -251,7 +254,7 @@ def collect_github(cfg: dict) -> list[dict]:
             for repo in r.json().get("items", []):
                 repos[repo["full_name"]] = repo
         except Exception as e:
-            log(f"  ✗ GitHub topic:{topic}: {e}")
+            log(f"  ✗ GitHub topic:{topic}: {e}", "warning")
     top = sorted(repos.values(), key=lambda x: -x["stargazers_count"])[: gh.get("limit", 8)]
     out = [make_item("GitHub (новые репо)", "code", r["full_name"], r["html_url"],
                      f"{r.get('description') or ''} [{r.get('language') or '—'}]",
@@ -294,7 +297,7 @@ def collect_all(cfg: dict, state: dict, hours: float) -> list[dict]:
         try:
             items += fn(*args)
         except Exception as e:
-            log(f"  ✗ {fn.__name__}: {e}")
+            log(f"  ✗ {fn.__name__}: {e}", "warning")
 
     seen = state.get("seen", {})
     unique: dict[str, dict] = {}
@@ -506,7 +509,7 @@ def render(digest: dict) -> list[str]:
 
 
 def tg_api(method: str, payload: dict | None = None) -> dict:
-    token = os.environ["TELEGRAM_BOT_TOKEN"].strip()
+    token = os.environ["TELEGRAM_BOT_TOKEN"].strip().removeprefix("bot")
     for attempt in range(4):
         r = requests.post(f"https://api.telegram.org/bot{token}/{method}", json=payload or {}, timeout=30)
         data = r.json() if r.headers.get("content-type", "").startswith("application/json") else {"ok": False, "description": r.text[:200]}
@@ -544,7 +547,8 @@ def find_chat_id(state: dict) -> str | None:
         return str(state["chat_id"])
     res = tg_api("getUpdates")
     if not res.get("ok"):
-        log(f"Не получилось обратиться к боту: {res.get('description')}. Проверь TELEGRAM_BOT_TOKEN.")
+        log(f"Telegram не принял токен: {res.get('description')}. Проверь секрет TELEGRAM_BOT_TOKEN "
+            f"(длина {len(os.environ['TELEGRAM_BOT_TOKEN'].strip())} символов, должен быть вида 123456789:AA...).", "error")
         return None
     for upd in res.get("result", []):
         chat = (upd.get("message") or {}).get("chat") or {}
@@ -553,8 +557,9 @@ def find_chat_id(state: dict) -> str | None:
             log(f"Нашёл чат с ботом: {name} (chat_id {chat['id']}), запоминаю.")
             state["chat_id"] = chat["id"]
             return str(chat["id"])
-    log("Боту ещё никто не писал (или это было больше суток назад). "
-        "Открой бота в Telegram, отправь ему любое сообщение и запусти снова.")
+    kinds = sorted({k for u in res.get("result", []) for k in u if k != "update_id"})
+    log(f"Боту ещё никто не писал (или это было больше суток назад; обновлений: {len(res.get('result', []))} {kinds}). "
+        "Открой бота в Telegram, отправь ему любое сообщение и запусти снова.", "error")
     return None
 
 
@@ -568,7 +573,8 @@ def main() -> int:
     args = ap.parse_args()
 
     if not args.dry_run and not os.getenv("TELEGRAM_BOT_TOKEN"):
-        log("Нет TELEGRAM_BOT_TOKEN. Создай бота у @BotFather и добавь токен в секреты.")
+        log("Нет секрета TELEGRAM_BOT_TOKEN. Создай бота у @BotFather и добавь токен в секреты "
+            "(Settings → Secrets and variables → Actions, имя ровно TELEGRAM_BOT_TOKEN).", "error")
         return 1
 
     cfg = yaml.safe_load(SOURCES_PATH.read_text("utf-8")) or {}
@@ -613,4 +619,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except Exception as e:
+        log(f"Ошибка: {e}", "error")
+        raise
