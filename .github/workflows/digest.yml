@@ -7,6 +7,11 @@ on:
     # До 7 утра бот шлёт без звука. Время меняется здесь (часы в UTC!).
     - cron: "13 21 * * *"
   workflow_dispatch: # кнопка «Run workflow» для ручного запуска
+    inputs:
+      resend:
+        description: "Прислать заново уже отправленное (проверить оформление)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write # чтобы сохранять data/state.json (список уже отправленного)
@@ -38,7 +43,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CLAUDE_MODEL: ${{ vars.CLAUDE_MODEL || 'claude-sonnet-5-5' }}
           TZ_OFFSET_HOURS: "6"
-        run: python digest.py
+        run: python digest.py ${{ inputs.resend && '--resend' || '' }}
 
       - name: Save state
         run: |

@@ -226,7 +226,7 @@ def collect_hackernews(cfg: dict, since: dt.datetime) -> list[dict]:
             continue
         hn_url = f"https://news.ycombinator.com/item?id={h['objectID']}"
         url = h.get("url") or hn_url
-        extra = [("HN", hn_url)] if h.get("url") else []
+        extra = [("💬 обсуждение", hn_url)] if h.get("url") else []
         published = dt.datetime.fromtimestamp(h.get("created_at_i", ts), dt.timezone.utc)
         out.append(make_item("Hacker News", "news", title, url, h.get("story_text", ""), published,
                              f"{h.get('points', 0)} pts, {h.get('num_comments', 0)} комм.", extra))
@@ -467,38 +467,68 @@ def short_source(it: dict) -> str:
     return it["source"].replace("YouTube ", "").replace("GitHub (новые репо)", "GitHub")
 
 
-def render(digest: dict) -> list[str]:
-    today = dt.datetime.now(TZ)
-    blocks = [f"🤖 <b>AI-дайджест · {today.day} {MONTHS[today.month - 1]}</b>"]
-    if digest.get("headline"):
-        blocks[0] += f"\n<i>{esc(digest['headline'])}</i>"
+WEEKDAYS = ["понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"]
 
+
+def visible_len(s: str) -> int:
+    """Telegram считает лимит по видимому тексту, без HTML-тегов."""
+    return len(html.unescape(re.sub(r"<[^>]+>", "", s)))
+
+
+def materials(n: int) -> str:
+    return "материала" if n % 10 == 1 and n % 100 != 11 else "материалов"
+
+
+def date_header() -> str:
+    today = dt.datetime.now(TZ)
+    return f"🤖 <b>AI-дайджест</b>  ·  {today.day} {MONTHS[today.month - 1]}, {WEEKDAYS[today.weekday()]}"
+
+
+def meta_line(it: dict, related: list[dict]) -> str:
+    parts = [esc(short_source(it))] + ([esc(it["score"])] if it["score"] else [])
+    line = "<i>" + " · ".join(parts) + "</i>"
+    extras = list(it.get("extra_links", [])) + [(short_source(r), r["url"]) for r in related]
+    if extras:
+        line += "  ·  " + " · ".join(link(u, n) for n, u in extras[:3])
+    return line
+
+
+def render(digest: dict, total: int = 0, collapsed: tuple = ("other",)) -> list[str]:
+    head = date_header()
+    if digest.get("headline"):
+        head += f"\n<blockquote>{esc(digest['headline'])}</blockquote>"
+    blocks = [head]
+
+    n = 0
     for sec, header in SECTIONS.items():
         entries = [p for p in digest["picked"] if p["section"] == sec]
         if not entries:
             continue
-        blocks.append(header)
-        for p in entries:
-            it = p["item"]
-            meta = short_source(it) + (f", {it['score']}" if it["score"] else "")
-            text = f"• {link(it['url'], p['title'])}"
+        if sec in collapsed:
+            # второстепенное — свёрнутым блоком, раскрывается по нажатию
+            lines = [f"• {link(p['item']['url'], p['title'])}" + (f" — {esc(p['why'])}" if p["why"] else "")
+                     for p in entries]
+            blocks.append(f"{header}\n<blockquote expandable>" + "\n\n".join(lines) + "</blockquote>")
+            continue
+        for j, p in enumerate(entries):
+            n += 1
+            text = f"<b>{n}. {link(p['item']['url'], p['title'])}</b>"
             if p["why"]:
-                text += f" — {esc(p['why'])}"
-            text += f" <i>({esc(meta)})</i>"
-            extras = list(it.get("extra_links", [])) + [(short_source(r), r["url"]) for r in p["related"]]
-            if extras:
-                text += "\n   ещё: " + " · ".join(link(u, n) for n, u in extras[:4])
-            blocks.append(text)
+                text += f"\n{esc(p['why'])}"
+            text += "\n" + meta_line(p["item"], p["related"])
+            # заголовок раздела держим вместе с первым пунктом
+            blocks.append(f"{header}\n{text}" if j == 0 else text)
 
     if digest.get("tip"):
-        blocks.append(f"💡 <b>Фишка дня:</b> {esc(digest['tip'])}")
+        blocks.append(f"💡 <b>Фишка дня</b>\n<blockquote>{esc(digest['tip'])}</blockquote>")
+    if total:
+        blocks.append(f"<i>Отобрано {len(digest['picked'])} из {total} {materials(total)} за сутки</i>")
 
     # склеиваем блоки в сообщения, не разрывая пункты
     messages, cur = [], ""
     for b in blocks:
-        sep = "\n\n" if b.startswith(("🔥", "🛠", "📺", "📄", "📌", "💡")) else "\n"
-        candidate = (cur + sep + b) if cur else b
-        if len(candidate) > TG_LIMIT and cur:
+        candidate = f"{cur}\n\n{b}" if cur else b
+        if visible_len(candidate) > TG_LIMIT and cur:
             messages.append(cur)
             cur = b
         else:
@@ -506,6 +536,15 @@ def render(digest: dict) -> list[str]:
     if cur:
         messages.append(cur)
     return messages
+
+
+def cover_url(digest: dict) -> str | None:
+    """Ссылка для превью-картинки над первым сообщением: первая главная новость."""
+    for sec in SECTIONS:
+        for p in digest["picked"]:
+            if p["section"] == sec:
+                return p["item"]["url"]
+    return None
 
 
 def tg_api(method: str, payload: dict | None = None) -> dict:
@@ -520,13 +559,15 @@ def tg_api(method: str, payload: dict | None = None) -> dict:
     return data
 
 
-def send_telegram(messages: list[str], chat_id: str) -> None:
+def send_telegram(messages: list[str], chat_id: str, cover: str | None = None) -> None:
     # ночью (до 7 утра) шлём без звука, чтобы не будить
     silent = dt.datetime.now(TZ).hour < 7
-    for msg in messages:
+    for i, msg in enumerate(messages):
+        preview = ({"url": cover, "prefer_large_media": True, "show_above_text": True}
+                   if cover and i == 0 else {"is_disabled": True})
         res = tg_api("sendMessage", {"chat_id": chat_id, "text": msg, "parse_mode": "HTML",
                                      "disable_notification": silent,
-                                     "link_preview_options": {"is_disabled": True}})
+                                     "link_preview_options": preview})
         if not res.get("ok"):
             log(f"  Telegram не принял HTML ({res.get('description')}), шлю простым текстом…")
             plain = html.unescape(re.sub(r"<[^>]+>", "", msg))
@@ -572,6 +613,7 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true", help="напечатать дайджест, ничего не отправлять и не сохранять")
     ap.add_argument("--no-llm", action="store_true", help="без Claude, просто топ по рейтингу")
     ap.add_argument("--hours", type=float, help="окно в часах (по умолчанию из sources.yaml)")
+    ap.add_argument("--resend", action="store_true", help="не пропускать уже отправленное (проверить оформление)")
     args = ap.parse_args()
 
     if not args.dry_run and not os.getenv("TELEGRAM_BOT_TOKEN"):
@@ -587,32 +629,36 @@ def main() -> int:
         if not chat_id:
             return 1
     max_items = int(cfg.get("max_items", 12))
-    items = collect_all(cfg, state, args.hours or cfg.get("window_hours", 36))
+    collect_state = {**state, "seen": {}} if args.resend else state
+    items = collect_all(cfg, collect_state, args.hours or cfg.get("window_hours", 36))
 
     if not items:
         digest = {"headline": "", "picked": [], "tip": ""}
     elif args.no_llm or not os.getenv("ANTHROPIC_API_KEY"):
         if not args.no_llm:
-            log("⚠️ Нет ANTHROPIC_API_KEY — отправляю простой топ без отбора.")
+            log("Нет ANTHROPIC_API_KEY — отправляю простой топ без отбора.", "warning")
         digest = fallback_digest(items, max_items)
     else:
         digest = curate(items, max_items)
 
+    cover = None
     if not digest["picked"]:
         if not cfg.get("send_empty", True):
             log("Ничего стоящего, сообщение не отправляю.")
             messages = []
         else:
-            messages = ["🤖 <b>AI-дайджест</b>\nСегодня ничего действительно стоящего не нашлось. Отдыхаем 🙂"]
+            messages = [date_header() + "\n<blockquote>Сегодня ничего действительно стоящего не нашлось — отдыхаем 🙂</blockquote>"]
     else:
-        messages = render(digest)
+        messages = render(digest, len(items), tuple(cfg.get("collapsed_sections", ["other"])))
+        if cfg.get("cover_preview", True):
+            cover = cover_url(digest)
 
     if args.dry_run:
         print("\n\n────────── следующее сообщение ──────────\n\n".join(messages))
         return 0
 
     if messages:
-        send_telegram(messages, chat_id)
+        send_telegram(messages, chat_id, cover)
     today = now_utc().date().isoformat()
     for it in items:
         state.setdefault("seen", {})[it["key"]] = today
