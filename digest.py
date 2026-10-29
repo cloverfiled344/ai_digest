@@ -14,7 +14,7 @@ AI-дайджест в Telegram.
 
 Переменные окружения:
     TELEGRAM_BOT_TOKEN  — токен от @BotFather (обязательно)
-    TELEGRAM_CHAT_ID    — куда слать; если не задан, скрипт покажет id твоих чатов
+    TELEGRAM_CHAT_ID    — необязательно: если не задан, бот сам найдёт чат того, кто нажал Start
     ANTHROPIC_API_KEY   — ключ Claude API (без него будет простой топ без отбора)
     CLAUDE_MODEL        — модель, по умолчанию claude-sonnet-5-5
     GITHUB_TOKEN        — необязательно; в GitHub Actions подставляется сам
@@ -517,15 +517,18 @@ def tg_api(method: str, payload: dict | None = None) -> dict:
     return data
 
 
-def send_telegram(messages: list[str]) -> None:
-    chat_id = os.environ["TELEGRAM_CHAT_ID"].strip()
+def send_telegram(messages: list[str], chat_id: str) -> None:
+    # ночью (до 7 утра) шлём без звука, чтобы не будить
+    silent = dt.datetime.now(TZ).hour < 7
     for msg in messages:
         res = tg_api("sendMessage", {"chat_id": chat_id, "text": msg, "parse_mode": "HTML",
+                                     "disable_notification": silent,
                                      "link_preview_options": {"is_disabled": True}})
         if not res.get("ok"):
             log(f"  Telegram не принял HTML ({res.get('description')}), шлю простым текстом…")
             plain = html.unescape(re.sub(r"<[^>]+>", "", msg))
             res = tg_api("sendMessage", {"chat_id": chat_id, "text": plain[:4096],
+                                         "disable_notification": silent,
                                          "link_preview_options": {"is_disabled": True}})
             if not res.get("ok"):
                 raise RuntimeError(f"Telegram: {res.get('description')}")
@@ -533,22 +536,26 @@ def send_telegram(messages: list[str]) -> None:
     log(f"Отправлено сообщений: {len(messages)}")
 
 
-def show_chat_ids() -> None:
-    """Помогает узнать TELEGRAM_CHAT_ID: показывает чаты, где боту писали."""
+def find_chat_id(state: dict) -> str | None:
+    """Куда слать: секрет TELEGRAM_CHAT_ID → сохранённый чат → тот, кто первым написал боту."""
+    if os.getenv("TELEGRAM_CHAT_ID", "").strip():
+        return os.environ["TELEGRAM_CHAT_ID"].strip()
+    if state.get("chat_id"):
+        return str(state["chat_id"])
     res = tg_api("getUpdates")
     if not res.get("ok"):
         log(f"Не получилось обратиться к боту: {res.get('description')}. Проверь TELEGRAM_BOT_TOKEN.")
-        return
-    chats = {}
+        return None
     for upd in res.get("result", []):
-        msg = upd.get("message") or upd.get("channel_post") or upd.get("my_chat_member") or {}
-        chat = msg.get("chat")
-        if chat:
-            chats[chat["id"]] = chat.get("title") or chat.get("username") or chat.get("first_name") or ""
-    if not chats:
-        log("Боту ещё никто не писал. Открой бота в Telegram, нажми Start / напиши ему что угодно и запусти снова.")
-    for cid, name in chats.items():
-        log(f"  TELEGRAM_CHAT_ID = {cid}   ({name})")
+        chat = (upd.get("message") or {}).get("chat") or {}
+        if chat.get("type") == "private":
+            name = chat.get("username") or chat.get("first_name") or ""
+            log(f"Нашёл чат с ботом: {name} (chat_id {chat['id']}), запоминаю.")
+            state["chat_id"] = chat["id"]
+            return str(chat["id"])
+    log("Боту ещё никто не писал (или это было больше суток назад). "
+        "Открой бота в Telegram, отправь ему любое сообщение и запусти снова.")
+    return None
 
 
 # ───────────────────────────── main ─────────────────────────────
@@ -560,17 +567,17 @@ def main() -> int:
     ap.add_argument("--hours", type=float, help="окно в часах (по умолчанию из sources.yaml)")
     args = ap.parse_args()
 
-    if not args.dry_run:
-        if not os.getenv("TELEGRAM_BOT_TOKEN"):
-            log("Нет TELEGRAM_BOT_TOKEN. Создай бота у @BotFather и добавь токен в секреты.")
-            return 1
-        if not os.getenv("TELEGRAM_CHAT_ID"):
-            log("Нет TELEGRAM_CHAT_ID. Вот чаты, где писали боту:")
-            show_chat_ids()
-            return 1
+    if not args.dry_run and not os.getenv("TELEGRAM_BOT_TOKEN"):
+        log("Нет TELEGRAM_BOT_TOKEN. Создай бота у @BotFather и добавь токен в секреты.")
+        return 1
 
     cfg = yaml.safe_load(SOURCES_PATH.read_text("utf-8")) or {}
     state = load_state()
+    chat_id = None
+    if not args.dry_run:
+        chat_id = find_chat_id(state)
+        if not chat_id:
+            return 1
     max_items = int(cfg.get("max_items", 12))
     items = collect_all(cfg, state, args.hours or cfg.get("window_hours", 36))
 
@@ -597,7 +604,7 @@ def main() -> int:
         return 0
 
     if messages:
-        send_telegram(messages)
+        send_telegram(messages, chat_id)
     today = now_utc().date().isoformat()
     for it in items:
         state.setdefault("seen", {})[it["key"]] = today

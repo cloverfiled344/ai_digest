@@ -2,9 +2,10 @@ name: AI digest
 
 on:
   schedule:
-    # 02:47 UTC = 08:47 по Бишкеку (UTC+6). GitHub часто запускает с задержкой 5–20 минут,
-    # так что дайджест придёт примерно к 9 утра. Время меняется здесь (часы в UTC!).
-    - cron: "47 2 * * *"
+    # 21:13 UTC = 03:13 по Бишкеку (UTC+6). Бесплатное расписание GitHub опаздывает
+    # (у нас было ~6 часов), поэтому ставим рано: дайджест будет ждать к утру.
+    # До 7 утра бот шлёт без звука. Время меняется здесь (часы в UTC!).
+    - cron: "13 21 * * *"
   workflow_dispatch: # кнопка «Run workflow» для ручного запуска
 
 permissions:
@@ -19,9 +20,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
