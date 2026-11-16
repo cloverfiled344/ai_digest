@@ -1,0 +1,110 @@
+"""Превращает дайджест в сообщения Telegram (HTML, ≤ 4096 символов каждое)."""
+
+from __future__ import annotations
+
+from datetime import date
+from html import escape
+from urllib.parse import urlsplit
+
+from .sources import Item
+
+TG_LIMIT = 4000  # с запасом от лимита Telegram в 4096
+
+MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля",
+          "августа", "сентября", "октября", "ноября", "декабря"]
+
+STATUS = {"exploded": "🔥 Уже выстрелило", "rising": "🌱 Набирает обороты"}
+
+SOURCE_LABELS = {
+    "news.ycombinator.com": "HN", "github.com": "GitHub", "producthunt.com": "Product Hunt",
+    "huggingface.co": "Hugging Face", "reddit.com": "Reddit", "techcrunch.com": "TechCrunch",
+}
+
+
+def _e(text: str) -> str:
+    return escape(str(text or ""), quote=False)
+
+
+def _today() -> str:
+    d = date.today()
+    return f"{d.day} {MONTHS[d.month - 1]}"
+
+
+def _label(url: str) -> str:
+    host = urlsplit(url).netloc.lower().removeprefix("www.")
+    return SOURCE_LABELS.get(host, host or "ссылка")
+
+
+def _links(sources: list[Item]) -> str:
+    links, seen = [], set()
+    for it in sources:
+        for url in (it.url, it.discussion_url):
+            if url and url not in seen:
+                seen.add(url)
+                links.append(f'<a href="{escape(url, quote=True)}">{_e(_label(url))}</a>')
+    return " · ".join(links[:4])
+
+
+def _footer(status: dict[str, int | None]) -> str:
+    parts = [f"{name} {'✗' if n is None else n}" for name, n in status.items()]
+    return ("<i>Сигналов: " + " · ".join(parts) + "</i>\n"
+            "<i>Напиши боту, что тебе интересно (например «больше про n8n, меньше dev tools») — "
+            "учту в следующем дайджесте. /wishes — список пожеланий, /reset — сбросить.</i>")
+
+
+def _pack(blocks: list[str]) -> list[str]:
+    """Склеивает блоки в сообщения, не разрывая блок посередине."""
+    messages, current = [], ""
+    for block in blocks:
+        if len(block) > TG_LIMIT:
+            block = block[: TG_LIMIT - 1] + "…"
+        candidate = f"{current}\n\n{block}" if current else block
+        if len(candidate) > TG_LIMIT:
+            messages.append(current)
+            current = block
+        else:
+            current = candidate
+    if current:
+        messages.append(current)
+    return messages
+
+
+def format_digest(digest: dict, status: dict[str, int | None]) -> list[str]:
+    blocks = [f"💡 <b>Идеи дня · {_today()}</b>"]
+    if digest.get("trend_of_day"):
+        blocks[0] += f"\n\n<b>Тренд дня.</b> {_e(digest['trend_of_day'])}"
+
+    for n, idea in enumerate(digest["ideas"], 1):
+        d = idea["difficulty"]
+        lines = [
+            f"<b>{n}. {_e(idea['title'])}</b>",
+            f"{STATUS.get(idea['status'], '💡')} · <i>{_e(idea['category'])}</i>",
+            "",
+            f"<b>Что это:</b> {_e(idea['what'])}",
+            f"<b>Сигнал:</b> {_e(idea['signal'])}",
+            f"<b>Что построить:</b> {_e(idea['opportunity'])}",
+            f"<b>Деньги:</b> {_e(idea['monetization'])}",
+            f"<b>Сложность:</b> {'●' * d}{'○' * (5 - d)} · <b>MVP:</b> {_e(idea['mvp_time'])}",
+        ]
+        if links := _links(idea["sources"]):
+            lines.append(f"🔗 {links}")
+        blocks.append("\n".join(lines))
+
+    blocks.append(_footer(status))
+    return _pack(blocks)
+
+
+def format_fallback(items: list[Item], status: dict[str, int | None], reason: str, per_source: int = 3) -> list[str]:
+    """Дайджест без ИИ: лучшие сигналы каждого источника."""
+    blocks = [f"📡 <b>Сигналы дня · {_today()}</b>\n<i>{_e(reason)}</i>"]
+    by_source: dict[str, list[Item]] = {}
+    for it in items:
+        by_source.setdefault(it.source, []).append(it)
+    for source, group in by_source.items():
+        group.sort(key=lambda x: x.score, reverse=True)
+        lines = [f"<b>{_e(source)}</b>"]
+        for it in group[:per_source]:
+            lines.append(f'• <a href="{escape(it.url, quote=True)}">{_e(it.title)}</a> — {_e(it.metric)}')
+        blocks.append("\n".join(lines))
+    blocks.append(_footer(status))
+    return _pack(blocks)

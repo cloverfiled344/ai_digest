@@ -1,0 +1,73 @@
+name: Idea bot
+
+on:
+  schedule:
+    # Время в UTC, Бишкек = UTC+6. Бесплатное расписание GitHub опаздывает на часы,
+    # поэтому ставим рано: идеи будут ждать к утру. До 7 утра бот шлёт без звука.
+    - cron: "47 21 * * *"        # 03:47 по Бишкеку — «Идеи дня»
+    - cron: "23 4,10,16 * * *"   # 10:23, 16:23, 22:23 — забрать пожелания из чата (без ИИ, бесплатно)
+  workflow_dispatch:             # кнопка «Run workflow» для ручного запуска
+    inputs:
+      mode:
+        description: "Что сделать"
+        type: choice
+        default: digest
+        options: [digest, dry-run, feedback]
+
+permissions:
+  contents: write                # чтобы сохранять память бота (data/idea_bot_state.json)
+
+concurrency:
+  group: idea-bot
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      STATE_PATH: data/idea_bot_state.json
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: idea_bot/requirements.txt
+
+      - run: pip install -r idea_bot/requirements.txt
+
+      - name: Run bot
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          PRODUCTHUNT_TOKEN: ${{ secrets.PRODUCTHUNT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CLAUDE_MODEL: ${{ vars.IDEA_BOT_MODEL }}
+          TZ_OFFSET_HOURS: "6"
+          SCHEDULE: ${{ github.event.schedule }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          if [ "$SCHEDULE" = "23 4,10,16 * * *" ] || [ "$MODE" = "feedback" ]; then
+            python -m idea_bot --sync-feedback
+          elif [ "$MODE" = "dry-run" ]; then
+            python -m idea_bot --dry-run
+          else
+            python -m idea_bot
+          fi
+
+      - name: Save bot memory
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$STATE_PATH"
+          git diff --cached --quiet && exit 0
+          git commit -m "idea-bot: update memory"
+          for i in 1 2 3; do
+            git pull --rebase --autostash && git push && exit 0
+            sleep 5
+          done
+          exit 1
