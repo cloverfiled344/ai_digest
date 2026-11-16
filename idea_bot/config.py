@@ -12,9 +12,15 @@ USER_PROFILE = """
 """.strip()
 
 # ── Дайджест ──────────────────────────────────────────────────────────────────
-IDEAS_PER_DIGEST = 6
+# Разделы дайджеста: (код, заголовок, сколько идей)
+SEGMENTS = [
+    ("world", "🌍 МИР", 3),
+    ("cis", "🧭 СНГ", 2),
+    ("central_asia", "🏔 ЦЕНТРАЛЬНАЯ АЗИЯ", 2),
+]
+IDEAS_PER_DIGEST = sum(n for _, _, n in SEGMENTS)
 CLAUDE_MODEL = os.getenv("CLAUDE_MODEL") or "claude-sonnet-5-5"
-MAX_ITEMS_TO_ANALYZE = 180  # сколько сигналов максимум отдаём Claude за раз
+MAX_ITEMS_TO_ANALYZE = 240  # сколько сигналов максимум отдаём Claude за раз
 
 # ── Источники ─────────────────────────────────────────────────────────────────
 HN_SHOW_MIN_POINTS = 40       # Show HN за 3 дня с таким рейтингом и выше
@@ -47,6 +53,27 @@ NEWS_FEEDS = {
 NEWS_MAX_AGE_HOURS = 48
 
 PRODUCTHUNT_LIMIT = 30
+
+# Региональные медиа: (название, RSS, регион, брать только IT/бизнес-новости)
+# Регион: "cis" — СНГ, "central_asia" — Центральная Азия.
+REGIONAL_FEEDS = [
+    ("vc.ru", "https://vc.ru/rss/all", "cis", True),
+    ("Хабр · ИИ", "https://habr.com/ru/rss/hubs/artificial_intelligence/articles/?fl=ru", "cis", False),
+    ("Хабр · стартапы", "https://habr.com/ru/rss/hubs/startuprise/articles/?fl=ru", "cis", False),
+    ("RB.ru", "https://rb.ru/feeds/all/", "cis", True),
+    ("Digital Business (KZ)", "https://digitalbusiness.kz/feed/", "central_asia", False),
+    ("Profit.kz", "https://profit.kz/rss/", "central_asia", False),
+    ("Курсив (KZ)", "https://kz.kursiv.media/feed/", "central_asia", True),
+    ("Spot (UZ)", "https://www.spot.uz/ru/rss/", "central_asia", True),
+    ("Gazeta.uz", "https://www.gazeta.uz/ru/rss/", "central_asia", True),
+    ("Kun.uz", "https://kun.uz/ru/news/rss", "central_asia", True),
+    ("24.kg", "https://24.kg/rss/", "central_asia", True),
+    ("Tazabek (KG)", "https://www.tazabek.kg/rss/", "central_asia", True),
+    ("Economist.kg", "https://economist.kg/feed/", "central_asia", True),
+    ("Kaktus.media", "https://kaktus.media/?rss", "central_asia", True),
+]
+REGIONAL_MAX_AGE_HOURS = 72   # в регионах IT-новостей меньше — смотрим за 3 дня
+REGIONAL_PER_FEED = 15
 
 # Слова, по которым отсекаем мусор ещё до Claude
 BLOCKLIST = ["nsfw", "uncensored", "nude", "porn", "hentai", "onlyfans", "casino", "betting"]

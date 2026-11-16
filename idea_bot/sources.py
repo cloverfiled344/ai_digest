@@ -35,6 +35,7 @@ class Item:
     metric: str = ""       # человекочитаемая метрика тяги: «512 очков, 230 комментариев»
     score: float = 0.0     # для сортировки внутри источника
     discussion_url: str = ""
+    region: str = "world"  # world | cis | central_asia — откуда сигнал
 
 
 def _session() -> requests.Session:
@@ -346,6 +347,72 @@ def fetch_news(s: requests.Session) -> list[Item]:
     return items
 
 
+# ── Региональные медиа: СНГ и Центральная Азия ────────────────────────────────
+
+# Общие новостные сайты пишут обо всём подряд — от них берём только то, что похоже
+# на технологии, стартапы и бизнес. Профильные IT-издания не фильтруем.
+_TECH_RE = re.compile(
+    r"\b(ии|ai|ит|it|gpt|llm|saas|b2b|api|crm|erp|mvp)\b"
+    r"|нейросет|искусственн|машинн\w* обучен|стартап|startup|автоматиз|роботиз|чат-?бот|\bбот"
+    r"|приложени|платформ|сервис|маркетплейс|финтех|fintech|венчур|инвест|раунд|акселератор"
+    r"|цифров|диджитал|digital|онлайн|e-?commerce|интернет-|айти|технолог|облач|дата-?центр"
+    r"|разработ|программ|кибер|хакатон|astana hub|it park|uzum|kaspi|click|payme|яндекс|openai",
+    re.IGNORECASE,
+)
+
+_FEED_UA = "Mozilla/5.0 (compatible; idea-bot/1.0; personal RSS reader)"
+
+
+def _fetch_feed(s: requests.Session, name: str, url: str, region: str, only_tech: bool) -> list[Item]:
+    r = s.get(url, timeout=TIMEOUT, headers={"User-Agent": _FEED_UA})
+    r.raise_for_status()
+    feed = feedparser.parse(r.content)
+    if not feed.entries:
+        raise RuntimeError("лента пустая или это не RSS")
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=cfg.REGIONAL_MAX_AGE_HOURS)
+    items: list[Item] = []
+    for e in feed.entries[:60]:
+        published = e.get("published_parsed") or e.get("updated_parsed")
+        if published and datetime(*published[:6], tzinfo=timezone.utc) < cutoff:
+            continue
+        title, summary = e.get("title", ""), clean(e.get("summary"))
+        if only_tech and not _TECH_RE.search(f"{title} {summary}"):
+            continue
+        if not title or _blocked(title, summary):
+            continue
+        items.append(Item(
+            source=name, title=title, url=e.get("link", ""), description=summary,
+            metric="свежая публикация", region=region,
+        ))
+        if len(items) >= cfg.REGIONAL_PER_FEED:
+            break
+    return items
+
+
+def _fetch_region(s: requests.Session, region: str) -> list[Item]:
+    feeds = [f for f in cfg.REGIONAL_FEEDS if f[2] == region]
+    items, ok = [], 0
+    for name, url, _, only_tech in feeds:
+        try:
+            got = _fetch_feed(s, name, url, region, only_tech)
+            ok += 1
+            log.info("   %-24s ✓ %d", name, len(got))
+            items.extend(got)
+        except Exception as e:
+            log.info("   %-24s ✗ %s", name, str(e)[:120])
+    if feeds and not ok:
+        raise RuntimeError("ни одна лента не ответила")
+    return items
+
+
+def fetch_cis(s: requests.Session) -> list[Item]:
+    return _fetch_region(s, "cis")
+
+
+def fetch_central_asia(s: requests.Session) -> list[Item]:
+    return _fetch_region(s, "central_asia")
+
+
 # ── Сбор всего вместе ─────────────────────────────────────────────────────────
 
 SOURCES = {
@@ -355,6 +422,8 @@ SOURCES = {
     "Hugging Face": fetch_huggingface,
     "Reddit": fetch_reddit,
     "TechCrunch": fetch_news,
+    "СНГ-медиа": fetch_cis,
+    "Медиа ЦА": fetch_central_asia,
 }
 
 

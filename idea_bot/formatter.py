@@ -7,6 +7,7 @@ from datetime import date
 from html import escape
 from urllib.parse import urlsplit
 
+from . import config as cfg
 from .sources import Item
 
 TG_LIMIT = 4000  # с запасом от лимита Telegram в 4096
@@ -14,11 +15,16 @@ TG_LIMIT = 4000  # с запасом от лимита Telegram в 4096
 MONTHS = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля",
           "августа", "сентября", "октября", "ноября", "декабря"]
 
-STATUS = {"exploded": "🔥 Уже выстрелило", "rising": "🌱 Набирает обороты"}
+STATUS = {"exploded": "🔥 Уже выстрелило", "rising": "🌱 Набирает обороты", "gap": "🪟 Окно возможностей"}
+WHY_LABEL = {"exploded": "Почему залетело", "rising": "Почему может залететь", "gap": "Почему сработает здесь"}
+SEGMENT_TITLES = {code: title for code, title, _ in cfg.SEGMENTS}
 
 SOURCE_LABELS = {
     "news.ycombinator.com": "HN", "github.com": "GitHub", "producthunt.com": "Product Hunt",
     "huggingface.co": "Hugging Face", "reddit.com": "Reddit", "techcrunch.com": "TechCrunch",
+    "habr.com": "Хабр", "digitalbusiness.kz": "Digital Business", "kz.kursiv.media": "Курсив",
+    "spot.uz": "Spot", "gazeta.uz": "Gazeta.uz", "kun.uz": "Kun.uz", "tazabek.kg": "Tazabek",
+    "economist.kg": "Economist.kg", "kaktus.media": "Kaktus",
 }
 
 
@@ -87,14 +93,21 @@ def format_digest(digest: dict, status: dict[str, int | None]) -> list[str]:
     if digest.get("trend_of_day"):
         blocks[0] += f"\n\n<b>Тренд дня.</b> {_e(digest['trend_of_day'])}"
 
+    current_segment = None
     for n, idea in enumerate(digest["ideas"], 1):
         d = idea["difficulty"]
-        lines = [
+        kind = idea.get("status", "")
+        lines = []
+        if idea.get("segment") != current_segment:
+            current_segment = idea.get("segment")
+            lines += [f"<b>{_e(SEGMENT_TITLES.get(current_segment, ''))}</b>", ""]
+        lines += [
             f"<b>{n}. {_e(idea['title'])}</b>",
-            f"{STATUS.get(idea['status'], '💡')} · <i>{_e(idea['category'])}</i>",
+            f"{STATUS.get(kind, '💡')} · <i>{_e(idea['category'])}</i>",
             "",
             f"<b>Что это:</b> {_e(idea['what'])}",
-            f"<b>Сигнал:</b> {_e(idea['signal'])}",
+            f"<b>{WHY_LABEL.get(kind, 'Почему это важно')}:</b> {_e(idea.get('why', ''))}",
+            f"<b>Цифры:</b> {_e(idea['signal'])}",
             f"<b>Что построить:</b> {_e(idea['opportunity'])}",
             f"<b>Деньги:</b> {_e(idea['monetization'])}",
             f"<b>Сложность:</b> {'●' * d}{'○' * (5 - d)} · <b>MVP:</b> {_e(idea['mvp_time'])}",
