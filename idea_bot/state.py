@@ -30,6 +30,7 @@ class State:
     recent_ideas: list[dict] = field(default_factory=list)      # [{date, title}]
     feedback: list[dict] = field(default_factory=list)          # [{date, text}]
     tg_offset: int = 0
+    tg_bot_id: str | None = None                                # к какому боту относится tg_offset
     chat_id: int | None = None                                  # чат владельца (если не задан секретом)
 
     @classmethod

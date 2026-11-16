@@ -35,10 +35,16 @@ def main() -> int:
     state = State.load()
 
     # чат: секрет TELEGRAM_CHAT_ID → запомненный чат → первый, кто напишет боту
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    token = (os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
+    if token:
+        bot_id = token.split(":", 1)[0]
+        if state.tg_bot_id != bot_id:
+            # сменили бота: позиция в чате у нового бота своя
+            state.tg_bot_id, state.tg_offset = bot_id, 0
     tg = Telegram(token, os.getenv("TELEGRAM_CHAT_ID") or state.chat_id) if token else None
     if not tg and not args.dry_run:
-        log.error("Нужна переменная TELEGRAM_BOT_TOKEN (или запусти с --dry-run)")
+        log.error("Нет токена бота: добавь секрет IDEA_BOT_TELEGRAM_TOKEN в Settings → Secrets and variables → Actions "
+                  "(или запусти с --dry-run)")
         return 1
 
     # 1. пожелания из чата — до анализа, чтобы учесть их уже сегодня

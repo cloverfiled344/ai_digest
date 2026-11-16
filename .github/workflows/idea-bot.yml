@@ -41,8 +41,8 @@ jobs:
       - name: Run bot
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.IDEA_BOT_TELEGRAM_TOKEN }}   # отдельный бот для «Идей дня»
+          TELEGRAM_CHAT_ID: ${{ secrets.IDEA_BOT_CHAT_ID }}
           PRODUCTHUNT_TOKEN: ${{ secrets.PRODUCTHUNT_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CLAUDE_MODEL: ${{ vars.IDEA_BOT_MODEL }}
