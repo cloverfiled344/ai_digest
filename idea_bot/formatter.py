@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import date
 from html import escape
 from urllib.parse import urlsplit
@@ -35,13 +36,25 @@ def _label(url: str) -> str:
     return SOURCE_LABELS.get(host, host or "ссылка")
 
 
+def _short_title(it: Item) -> str:
+    """Подпись ссылки: имя репозитория/продукта, а не просто «GitHub»."""
+    title = re.sub(r"^(Show|Launch|Ask) HN:\s*", "", it.title).strip()
+    if "/" in title and " " not in title:          # owner/repo, org/model
+        title = title.split("/", 1)[1]
+    title = re.split(r"\s[–—-]\s|:\s", title, maxsplit=1)[0]
+    return title if len(title) <= 28 else title[:27].rstrip() + "…"
+
+
 def _links(sources: list[Item]) -> str:
     links, seen = [], set()
     for it in sources:
-        for url in (it.url, it.discussion_url):
+        pairs = [(it.url, f"{_short_title(it)} ({_label(it.url)})")]
+        if it.discussion_url and it.discussion_url != it.url:
+            pairs.append((it.discussion_url, "обсуждение на HN"))
+        for url, label in pairs:
             if url and url not in seen:
                 seen.add(url)
-                links.append(f'<a href="{escape(url, quote=True)}">{_e(_label(url))}</a>')
+                links.append(f'<a href="{escape(url, quote=True)}">{_e(label)}</a>')
     return " · ".join(links[:4])
 
 

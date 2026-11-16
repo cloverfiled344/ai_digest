@@ -199,7 +199,11 @@ def _reddit_posts(s: requests.Session, sub: str) -> list[dict]:
         return [c["data"] for c in data["data"]["children"]]
     except Exception:
         # С облачных IP Reddit часто отвечает 403 на JSON — пробуем RSS
+        time.sleep(2)
         r = s.get(f"https://www.reddit.com/r/{sub}/top/.rss", params={"t": "day"}, timeout=TIMEOUT)
+        if r.status_code == 429:  # просит подождать — ждём и пробуем ещё раз
+            time.sleep(min(int(r.headers.get("retry-after") or 10), 30))
+            r = s.get(f"https://www.reddit.com/r/{sub}/top/.rss", params={"t": "day"}, timeout=TIMEOUT)
         r.raise_for_status()
         feed = feedparser.parse(r.content)
         return [{"title": e.get("title", ""), "permalink": e.get("link", ""),
@@ -209,7 +213,9 @@ def _reddit_posts(s: requests.Session, sub: str) -> list[dict]:
 def fetch_reddit(s: requests.Session) -> list[Item]:
     items: list[Item] = []
     failures = 0
-    for sub in cfg.REDDIT_SUBS:
+    for n, sub in enumerate(cfg.REDDIT_SUBS):
+        if n:
+            time.sleep(3)  # Reddit режет частые запросы (429)
         try:
             posts = _reddit_posts(s, sub)
         except Exception as e:
@@ -244,7 +250,6 @@ def fetch_reddit(s: requests.Session) -> list[Item]:
             taken += 1
             if taken >= cfg.REDDIT_PER_SUB:
                 break
-        time.sleep(1)  # Reddit не любит частые запросы
     return items
 
 
