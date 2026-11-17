@@ -302,3 +302,29 @@ def test_token_never_in_error(cfg, monkeypatch, capsys):
     with pytest.raises(SystemExit) as exc:
         bot.send_post("<b>x</b>")
     assert secret not in str(exc.value) and secret not in capsys.readouterr().out
+
+
+def test_claude_request_has_no_temperature(cfg, monkeypatch):
+    seen = {}
+
+    def fake_post(url, headers=None, json=None, timeout=0):
+        seen.update(json)
+        return FakeResp(json_data={"content": [{"type": "text", "text": "{}"}]})
+
+    monkeypatch.setattr(bot.requests, "post", fake_post)
+    bot.call_anthropic("s", "u", "key")
+    assert "temperature" not in seen and seen["model"] == "claude-haiku-5-5"
+
+
+def test_run_fails_loudly_when_ai_errors(cfg, fake_net, monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
+    monkeypatch.setattr(bot.time, "sleep", lambda s: None)
+    monkeypatch.setattr(bot, "LLM_ERRORS", [])
+
+    def broken(system, user, key):
+        raise ValueError("model rejected request")
+
+    monkeypatch.setattr(bot, "call_anthropic", broken)
+    with pytest.raises(SystemExit) as exc:
+        bot.main([])
+    assert "ИИ не ответил" in str(exc.value)
