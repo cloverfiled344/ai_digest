@@ -451,7 +451,7 @@ def call_anthropic(system, user, key):
     r = requests.post(
         "https://api.anthropic.com/v1/messages",
         headers={"x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-        json={"model": model, "max_tokens": 2500, "temperature": 0.4, "system": system,
+        json={"model": model, "max_tokens": 2500, "system": system,  # temperature у моделей 5.5 не поддерживается
               "messages": [{"role": "user", "content": user}]},
         timeout=90,
     )
@@ -485,6 +485,9 @@ def parse_json(text):
     return json.loads(text[start:end + 1])
 
 
+LLM_ERRORS = []  # ошибки ИИ за этот запуск: если ничего не опубликовано из-за них, запуск падает и GitHub пришлёт письмо
+
+
 def ask_llm(user_prompt):
     """Возвращает dict из ответа ИИ или None. Одна повторная попытка при сбое."""
     for attempt in (1, 2):
@@ -501,6 +504,8 @@ def ask_llm(user_prompt):
             if isinstance(ex, requests.HTTPError) and ex.response is not None:
                 detail = ex.response.text[:300]
             log(f"  ИИ: попытка {attempt} не удалась: {type(ex).__name__}: {ex} {detail}")
+            if attempt == 2:
+                LLM_ERRORS.append(f"{type(ex).__name__}: {detail or ex}"[:300])
             time.sleep(3)
     return None
 
@@ -674,7 +679,7 @@ def make_evergreen(cfg, state):
         return None
     idx = state.get("evergreen_index", 0) % len(schemes)
     scheme = schemes[idx]
-    log(f"Свежих историй нет — напоминание о схеме: {scheme}")
+    log(f"Подходящих историй не нашлось — напоминание о схеме: {scheme}")
     prompt = f"""Свежих новостей нет. Напиши напоминание о распространённой в СНГ схеме: «{scheme}».
 Не приводи цифр, статистики и конкретных случаев — только общеизвестную механику и советы.
 Верни JSON:
@@ -820,6 +825,8 @@ def main(argv):
     state = load_state()
     result = run_once(CONFIG, state)
     if not result:
+        if LLM_ERRORS:
+            raise SystemExit("ИИ не ответил, пост не опубликован. Последняя ошибка: " + LLM_ERRORS[-1])
         log("Публиковать нечего — пропускаю этот запуск.")
         return
 
