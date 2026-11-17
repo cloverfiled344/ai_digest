@@ -1,0 +1,68 @@
+name: Antiscam — разборы
+
+on:
+  schedule:
+    # Время в UTC, Бишкек = UTC+6. 10 запусков: 8:19, 9:49, 11:19, 12:49, 14:19, 15:49, 17:19, 18:49, 20:19, 21:49.
+    # Бесплатное расписание GitHub опаздывает. Если запуск съедет на ночь, пост уйдёт без звука (quiet_hours в antiscam/config.yaml).
+    - cron: "19 2,5,8,11,14 * * *"
+    - cron: "49 3,6,9,12,15 * * *"
+  workflow_dispatch:             # кнопка «Run workflow» для ручного запуска
+    inputs:
+      category:
+        description: "Рубрика (auto — по плану дня)"
+        type: choice
+        default: auto
+        options: [auto, CIS, USA, WORLD]
+      dry_run:
+        description: "Тест: только показать пост в логе, не отправлять"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write                # чтобы сохранять память бота (data/antiscam_state.json)
+
+concurrency:
+  group: antiscam
+  cancel-in-progress: false
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      STATE_PATH: data/antiscam_state.json
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: antiscam/requirements.txt
+
+      - run: pip install -r antiscam/requirements.txt
+
+      - name: Собрать новости и опубликовать
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}            # общий ключ с дайджестом
+          TELEGRAM_BOT_TOKEN: ${{ secrets.ANTISCAM_TELEGRAM_TOKEN }}     # отдельный бот для канала
+          TELEGRAM_CHAT_ID: ${{ secrets.ANTISCAM_CHAT_ID }}              # @адрес канала или -100...
+          ANTHROPIC_MODEL: ${{ vars.ANTISCAM_MODEL || 'claude-haiku-5-5' }}
+          BOT_CTA: ${{ vars.ANTISCAM_CTA }}
+          ADD_KYRGYZ: ${{ vars.ANTISCAM_ADD_KYRGYZ }}
+          CATEGORY: ${{ inputs.category || 'auto' }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: python antiscam/bot.py
+
+      - name: Сохранить память бота
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$STATE_PATH"
+          git diff --cached --quiet && exit 0
+          git commit -m "antiscam: update memory"
+          for i in 1 2 3; do
+            git pull --rebase --autostash && git push && exit 0
+            sleep 5
+          done
+          exit 1
