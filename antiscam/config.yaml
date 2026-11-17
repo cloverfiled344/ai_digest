@@ -1,0 +1,218 @@
+# Настройки бота. Меняйте прямо здесь — код трогать не нужно.
+
+# Часовой пояс канала (Бишкек = +6). Нужен, чтобы считать посты «за сегодня».
+utc_offset_hours: 6
+
+# Сколько часов назад смотреть новости
+lookback_hours: 36
+
+# Не больше стольких постов в день
+daily_limit: 10
+
+# Порядок рубрик в течение дня: каждый запуск публикует следующую.
+# Сейчас: 5 × СНГ, 3 × мир, 2 × США. Меняйте порядок и состав как хотите.
+plan: [CIS, WORLD, CIS, USA, CIS, WORLD, CIS, USA, CIS, WORLD]
+
+# Посты этих рубрик уходят без звука, чтобы не надоедать подписчикам
+silent_categories: [USA, WORLD]
+
+# Тихие часы: в это время все посты уходят без звука (расписание GitHub может опаздывать)
+quiet_hours:
+  from: 23
+  to: 8
+
+# Если свежих историй нет ни в одной рубрике — сколько раз в день можно опубликовать напоминание о типичной схеме
+evergreen_max_per_day: 1
+
+# Рубрики: название, хэштег и что считается рубрикой (это читает ИИ при отборе)
+categories:
+  CIS:
+    hashtag: "#СНГ"
+    describe: "в странах СНГ: Кыргызстан, Казахстан, Узбекистан, Таджикистан, Туркменистан, Россия, Беларусь, Армения, Азербайджан, Молдова. Приоритет — Кыргызстан, затем Узбекистан и Казахстан"
+  USA:
+    hashtag: "#США"
+    describe: "в США"
+  WORLD:
+    hashtag: "#мир"
+    describe: "в любой стране мира, кроме США и стран СНГ (Европа, Азия, Ближний Восток, Латинская Америка, Африка, Австралия)"
+
+# Хэштеги в конце каждого поста
+hashtags: "#разбор #мошенники"
+
+# Типичные схемы для напоминаний (по кругу)
+evergreen:
+  - "фальшивое уведомление о посылке со ссылкой на «доставку»"
+  - "предоплата за товар продавцу из Instagram или Telegram"
+  - "аренда квартиры с задатком через доску объявлений"
+  - "звонок от «службы безопасности банка»"
+  - "просьба «проголосуй за меня» и взлом Telegram или WhatsApp"
+  - "«покупатель», который присылает ссылку, чтобы «получить оплату»"
+  - "«подработка» с переводами через свою карту (дропперство)"
+  - "лжеброкеры и «инвестиции» с гарантированным доходом"
+  - "«родственник попал в беду» и просит срочно перевести деньги"
+  - "фейковые розыгрыши и «вы выиграли приз»"
+
+# Новость попадает в отбор, только если в заголовке или описании есть хоть одно из этих слов (части слов)
+keywords:
+  - мошен
+  - афер
+  - обман
+  - фишинг
+  - вишинг
+  - кибер
+  - дроппер
+  - дропер
+  - лжеброкер
+  - предоплат
+  - фейков
+  - поддельн
+  - похитил
+  - взлом
+  - алдамчы      # кыргызский
+  - алаяқ        # казахский
+  - firibgar     # узбекский (латиница)
+  - фирибгар     # узбекский (кириллица)
+  - scam
+  - fraud
+  - phishing
+  - swindl
+  - impersonat
+  - con artist
+  - money mule
+
+# Слова для предварительного определения рубрики (окончательно решает ИИ)
+regions:
+  CIS: [кыргыз, киргиз, бишкек, " ош ", "в оше", чуй, иссык, нарын, талас, джалал, баткен, "мвд кр",
+        узбек, ташкент, самарканд, бухар, наманган, андижан, фергана, казах, алматы, астана, шымкент, караганд,
+        таджик, душанбе, туркмен, росси, москв, петербург, беларус, минск, армен, ереван, азербайдж, баку, молдов, кишин,
+        kyrgyz, bishkek, uzbek, tashkent, kazakh, almaty, astana, tajik, russia, moscow, belarus, armenia, azerbaijan, moldova]
+  USA: [сша, америк, фбр, нью-йорк, калифорн, техас, флорид, "u.s.", "united states", fbi, " ftc", "ic3",
+        california, texas, florida, "new york", ohio, georgia, arizona, illinois, michigan, pennsylvania, americans]
+
+# Внутри СНГ эти страны поднимаются выше в отборе
+priority:
+  KG: [кыргыз, киргиз, бишкек, " ош ", "в оше", чуй, иссык, нарын, талас, джалал, баткен, "мвд кр", kyrgyz, bishkek]
+  UZ: [узбек, ташкент, самарканд, бухар, наманган, андижан, фергана, uzbek, tashkent]
+  KZ: [казах, алматы, астана, шымкент, караганд, kazakh, almaty, astana]
+
+# Домены СМИ и госорганов, которые не нужно «обезвреживать» в тексте
+safe_domains: [24.kg, kaktus.media, akipress.org, sputnik.kg, economist.kg, vb.kg, kun.uz, gazeta.uz, spot.uz, daryo.uz,
+               tengrinews.kz, informburo.kz, nur.kz, zakon.kz, kursiv.media, post.kz, kazpost.kz, egov.kz, gov.kg, gov.uz,
+               antifraud.kz, ftc.gov, fbi.gov, ic3.gov, bleepingcomputer.com, krebsonsecurity.com]
+
+# Параметры Google Новостей по умолчанию (язык и издание). when: — за какой срок искать.
+google_params: "hl=ru&gl=RU&ceid=RU:ru"
+google_when: "2d"
+
+# Источники. type: google — поиск Google Новостей, bing — поиск Bing News, rss — лента сайта.
+# category — подсказка, к какой рубрике обычно относятся новости (CIS / USA / WORLD); без неё решает ИИ.
+# Если источник в логах пишет ошибку — просто удалите его строки, бот работает и без него.
+sources:
+  # ── СНГ ──
+  - name: "Google: Кыргызстан"
+    type: google
+    query: "мошенники Кыргызстан OR Бишкек OR Ош"
+    category: CIS
+  - name: "Google: Кыргызстан, кибер"
+    type: google
+    query: "кибермошенничество OR фишинг Кыргызстан"
+    category: CIS
+  - name: "Google: Узбекистан"
+    type: google
+    query: "мошенники Узбекистан OR Ташкент"
+    category: CIS
+  - name: "Google: Казахстан"
+    type: google
+    query: "мошенники Казахстан OR Алматы OR Астана"
+    category: CIS
+  - name: "Google: Россия, новые схемы"
+    type: google
+    query: "новая схема мошенников"
+    category: CIS
+  - name: "Google: другие страны СНГ"
+    type: google
+    query: "мошенники Беларусь OR Армения OR Азербайджан OR Таджикистан"
+    category: CIS
+  - name: "Bing: Кыргызстан"
+    type: bing
+    query: "мошенники Кыргызстан"
+    category: CIS
+  - name: "Bing: Узбекистан"
+    type: bing
+    query: "мошенники Узбекистан"
+    category: CIS
+  - name: "Bing: Казахстан"
+    type: bing
+    query: "мошенники Казахстан"
+    category: CIS
+  - name: "Sputnik Кыргызстан"
+    type: rss
+    url: "https://ru.sputnik.kg/export/rss2/archive/index.xml"
+    category: CIS
+  - name: "24.kg"
+    type: rss
+    url: "https://24.kg/rss/"
+    category: CIS
+  - name: "Kaktus.media"
+    type: rss
+    url: "https://kaktus.media/?rss"
+    category: CIS
+  - name: "Spot.uz"
+    type: rss
+    url: "https://www.spot.uz/ru/rss/"
+    category: CIS
+  - name: "Газета.uz"
+    type: rss
+    url: "https://www.gazeta.uz/ru/rss/"
+    category: CIS
+  - name: "Kun.uz"
+    type: rss
+    url: "https://kun.uz/ru/news/rss"
+    category: CIS
+  - name: "Tengrinews"
+    type: rss
+    url: "https://tengrinews.kz/news.rss"
+    category: CIS
+
+  # ── США ──
+  - name: "Google US: предупреждения"
+    type: google
+    query: "scam warning FBI OR FTC OR police"
+    google_params: "hl=en-US&gl=US&ceid=US:en"
+    category: USA
+  - name: "Google US: задержания"
+    type: google
+    query: "scammers arrested OR charged"
+    google_params: "hl=en-US&gl=US&ceid=US:en"
+    category: USA
+  - name: "Google: мошенники в США"
+    type: google
+    query: "мошенники США"
+    category: USA
+  - name: "Bing US"
+    type: bing
+    query: "new scam alert"
+    bing_params: "setlang=en&cc=US"
+    category: USA
+
+  # ── Мир ──
+  - name: "Google World: предупреждения"
+    type: google
+    query: "scam warning police"
+    google_params: "hl=en-GB&gl=GB&ceid=GB:en"
+    category: WORLD
+  - name: "Google World: новые схемы"
+    type: google
+    query: "new scam Europe OR Asia OR Australia OR India"
+    google_params: "hl=en-GB&gl=GB&ceid=GB:en"
+    category: WORLD
+  - name: "Google: мошенники в мире"
+    type: google
+    query: "мошенники Европа OR Китай OR Турция OR Индия OR Германия"
+    category: WORLD
+  - name: "BleepingComputer"
+    type: rss
+    url: "https://www.bleepingcomputer.com/feed/"
+  - name: "Krebs on Security"
+    type: rss
+    url: "https://krebsonsecurity.com/feed/"
