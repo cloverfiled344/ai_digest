@@ -731,7 +731,11 @@ def tg_call(method, payload=None, token=None):
     token = token or env("TELEGRAM_BOT_TOKEN")
     url = f"https://api.telegram.org/bot{token}/{method}"
     for _ in range(3):
-        r = requests.post(url, json=payload or {}, timeout=30)
+        try:
+            r = requests.post(url, json=payload or {}, timeout=30)
+        except requests.RequestException as ex:
+            # текст ошибки requests содержит адрес с токеном — в лог его не пускаем
+            raise SystemExit(f"Telegram недоступен ({type(ex).__name__}), метод {method}") from None
         data = r.json() if r.headers.get("content-type", "").startswith("application/json") else {"ok": False}
         if r.status_code == 429:
             wait = data.get("parameters", {}).get("retry_after", 5)

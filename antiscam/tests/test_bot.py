@@ -288,3 +288,17 @@ def test_quiet_hours(cfg, monkeypatch):
     assert bot.is_silent("CIS") is True
     at(8)
     assert bot.is_silent("CIS") is False
+
+
+def test_token_never_in_error(cfg, monkeypatch, capsys):
+    secret = "1234567890:AAH_secret_token_value_should_not_leak"
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", secret)
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "@test")
+
+    def broken_post(url, json=None, timeout=0):
+        raise bot.requests.ConnectionError(f"Max retries exceeded with url: {url}")
+
+    monkeypatch.setattr(bot.requests, "post", broken_post)
+    with pytest.raises(SystemExit) as exc:
+        bot.send_post("<b>x</b>")
+    assert secret not in str(exc.value) and secret not in capsys.readouterr().out
