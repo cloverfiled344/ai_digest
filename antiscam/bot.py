@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Бот-разборщик новостей о мошенничестве для Telegram-канала.
 
-Каждый запуск (по расписанию GitHub Actions, до 10 раз в день) бот:
-  1) собирает свежие новости о мошенничестве из RSS (СНГ, США, мир);
-  2) выбирает рубрику по плану дня (по умолчанию 5 × СНГ, 3 × мир, 2 × США);
+Каждый запуск (по расписанию GitHub Actions, до 15 раз в день) бот:
+  1) собирает свежие новости о мошенничестве из RSS (СНГ и весь мир, на разных языках);
+  2) выбирает рубрику по плану дня (по умолчанию 3 × СНГ и 12 × остальной мир);
   3) с помощью ИИ отбирает лучшую историю этой рубрики и пишет разбор,
      в начале — жирным, где это произошло;
   4) публикует пост в канал и запоминает его, чтобы не повторяться.
@@ -17,7 +17,7 @@
   TELEGRAM_BOT_TOKEN  токен бота от @BotFather
   TELEGRAM_CHAT_ID    @username канала или числовой id (-100...)
   ANTHROPIC_API_KEY   ключ Claude API (или GEMINI_API_KEY — ключ Gemini API)
-  CATEGORY            auto / CIS / USA / WORLD — принудительно выбрать рубрику (для тестов)
+  CATEGORY            auto / CIS / WORLD — принудительно выбрать рубрику (для тестов)
   DRY_RUN             1 — только показать пост в логах, ничего не отправлять
   BOT_CTA             строка-призыв в конце поста (например «🔍 Проверить ссылку: @mybot»)
   ADD_KYRGYZ          true — добавлять краткий пересказ на кыргызском
@@ -53,8 +53,7 @@ SESSION.headers.update({
     "Accept-Language": "ru,en;q=0.8",
 })
 
-CATEGORY_ORDER = ["CIS", "WORLD", "USA"]           # приоритет, если рубрика по плану пустая
-CATEGORY_NAMES = {"CIS": "СНГ", "USA": "США", "WORLD": "мир", "TIP": "напоминание"}
+LEGACY_CATEGORIES = {"USA": "WORLD"}  # раньше США были отдельной рубрикой — теперь это часть «мира»
 PRIORITY_BOOST = {"KG": 3, "UZ": 1.5, "KZ": 1.5}
 TELEGRAM_LIMIT = 4000  # у Telegram лимит 4096 символов, оставляем запас
 FLAG_RE = re.compile(r"^[\U0001F1E6-\U0001F1FF]{2}$")
@@ -188,17 +187,41 @@ def save_state(state, path=None):
         json.dump(state, f, ensure_ascii=False, indent=1)
 
 
-def mark_posted(state, items, category):
-    """Первая запись — опубликованная история (считается в дневной лимит), остальные — её дубли."""
+def mark_posted(state, items, category, meta=None):
+    """Первая запись — опубликованная история (считается в дневной лимит), остальные — её дубли.
+
+    meta: {"scheme": вид схемы, "country": страна} — для лимитов разнообразия."""
     ts, day = now_utc().isoformat(), local_now().date().isoformat()
     for i, it in enumerate(items):
-        state["posted"].append({"url": it["link"], "title": it["title"], "ts": ts, "date": day,
-                                "category": category, "counted": i == 0})
+        rec = {"url": it["link"], "title": it["title"], "ts": ts, "date": day,
+               "category": category, "counted": i == 0}
+        if i == 0 and meta:
+            rec.update({k: v for k, v in meta.items() if v})
+        state["posted"].append(rec)
+
+
+def todays_posts(state):
+    day = local_now().date().isoformat()
+    return [p for p in state["posted"] if p.get("date") == day and p.get("counted")]
 
 
 def today_stats(state):
-    day = local_now().date().isoformat()
-    return Counter(p.get("category") for p in state["posted"] if p.get("date") == day and p.get("counted"))
+    return Counter(LEGACY_CATEGORIES.get(p.get("category"), p.get("category")) for p in todays_posts(state))
+
+
+def today_mix(state):
+    """Сколько раз сегодня уже были каждая страна и каждый вид схемы."""
+    posts = todays_posts(state)
+    countries = Counter(p["country"] for p in posts if p.get("country"))
+    schemes = Counter(p["scheme"] for p in posts if p.get("scheme"))
+    return countries, schemes
+
+
+def cname(category):
+    """Название рубрики для логов."""
+    if category == "TIP":
+        return "напоминание"
+    return (CONFIG.get("categories", {}).get(category) or {}).get("name", category)
 
 
 def already_posted(item, state):
@@ -215,17 +238,18 @@ def already_posted(item, state):
 
 def category_order(cfg, stats):
     """Какую рубрику публиковать сейчас (и запасные), исходя из плана и уже вышедших постов."""
-    used = Counter({k: v for k, v in stats.items() if k in CATEGORY_NAMES and k != "TIP"})
+    all_cats = list(cfg["categories"])  # порядок в config.yaml = приоритет запасных рубрик
+    used = Counter({k: v for k, v in stats.items() if k in all_cats})
     remaining = []
-    for cat in cfg.get("plan", CATEGORY_ORDER):
+    for cat in cfg.get("plan", all_cats):
         if used[cat] > 0:
             used[cat] -= 1
         else:
             remaining.append(cat)
     if not remaining:  # план выполнен, а лимит ещё нет — берём что найдётся
-        return list(CATEGORY_ORDER)
+        return all_cats
     order = [remaining[0]]
-    order += [c for c in CATEGORY_ORDER if c in remaining and c not in order]
+    order += [c for c in all_cats if c in remaining and c not in order]
     return order
 
 
@@ -342,11 +366,16 @@ def collect(cfg):
 def guess_category(item, cfg):
     """Предварительная рубрика по словам в тексте. None — непонятно, решит ИИ."""
     text = f" {item['title']} {item['summary']} ".lower()
-    found = {cat for cat, words in (cfg.get("regions") or {}).items() if any(w.lower() in text for w in words)}
+    cats = cfg.get("categories", {})
+    found = {LEGACY_CATEGORIES.get(cat, cat) for cat, words in (cfg.get("regions") or {}).items()
+             if any(w.lower() in text for w in words)} & set(cats)
+    src = LEGACY_CATEGORIES.get(item.get("src_category"), item.get("src_category"))
     if len(found) == 1:
         return found.pop()
-    if item.get("src_category") in found or not found:
-        return item.get("src_category")
+    if not found and src == "CIS":
+        return None  # СНГ-издание, но страна не названа — например, новость про другую страну; решит ИИ
+    if src in found or not found:
+        return src
     return None
 
 
@@ -396,7 +425,7 @@ def select_candidates(items, state, cfg):
     for i, it in enumerate(unique, 1):
         it["id"] = f"n{i}"
     counts = Counter(c["category"] or "?" for c in unique)
-    log(f"Свежих историй: {len(unique)} " + ", ".join(f"{CATEGORY_NAMES.get(k, k)}: {v}" for k, v in counts.items()))
+    log(f"Свежих историй: {len(unique)} " + ", ".join(f"{cname(k) if k != '?' else '?'}: {v}" for k, v in counts.items()))
     return unique
 
 
@@ -534,12 +563,34 @@ STORY_FIELDS = """"title": "заголовок своими словами до 
 "ky": \"\""""
 
 
-def llm_pick(cands, category, cfg):
+def schemes_text(cfg):
+    return "\n".join(f"- {key}: {v['describe']}" for key, v in (cfg.get("schemes") or {}).items())
+
+
+def mix_text(cfg, mix):
+    countries, schemes = mix
+    names = cfg.get("schemes") or {}
+    parts = []
+    if countries:
+        parts.append("страны — " + ", ".join(f"{c} ×{n}" for c, n in countries.most_common()))
+    if schemes:
+        parts.append("виды схем — " + ", ".join(f"{names.get(s, {}).get('hashtag', s)} ×{n}" for s, n in schemes.most_common()))
+    return "; ".join(parts) or "пока ничего"
+
+
+def llm_pick(cands, category, cfg, mix=(Counter(), Counter())):
     describe = cfg["categories"][category]["describe"]
-    prompt = f"""Сейчас {local_now().strftime('%d.%m.%Y %H:%M')}. Ниже свежие новости.
-Выбери до 2 лучших историй о мошенничестве, которые произошли {describe}. Важно, где пострадали люди или где действовали мошенники, а не где вышла новость.
+    max_c, max_s = cfg.get("max_per_country", 3), cfg.get("max_per_scheme", 3)
+    prompt = f"""Сейчас {local_now().strftime('%d.%m.%Y %H:%M')}. Ниже свежие новости на разных языках.
+Выбери до 3 лучших историй о мошенничестве, которые произошли {describe}. Важно, где пострадали люди или где действовали мошенники, а не где вышла новость.
+
+Канал хочет разнообразия. Сегодня уже опубликовано: {mix_text(cfg, mix)}.
+Не бери историю, если её страна сегодня уже была {max_c} раза или её вид схемы — {max_s} раза. При прочих равных выбирай страны и виды схем, которых сегодня ещё не было.
+Виды схем:
+{schemes_text(cfg)}
+
 Одна и та же история в разных СМИ — дубликат: выбирай одну, остальные укажи в duplicates.
-Верни JSON: {{"ids": ["n3", "n1"], "duplicates": ["n7"]}} — ids в порядке качества. Если подходящих нет — {{"ids": [], "duplicates": []}}.
+Верни JSON: {{"ids": ["n3", "n1", "n8"], "duplicates": ["n7"]}} — ids в порядке качества. Если подходящих нет — {{"ids": [], "duplicates": []}}.
 
 Новости:
 {format_candidates(cands)}"""
@@ -547,23 +598,28 @@ def llm_pick(cands, category, cfg):
     if data is None:
         return None, []
     by_id = {c["id"]: c for c in cands}
-    chosen = [by_id[i] for i in data.get("ids", []) if i in by_id][:2]
+    chosen = [by_id[i] for i in data.get("ids", []) if i in by_id][:3]
     dups = [by_id[i] for i in data.get("duplicates", []) if i in by_id and by_id[i] not in chosen]
     log(f"  ИИ выбрал: {[c['id'] for c in chosen]}, дубликаты: {[c['id'] for c in dups]}")
     return chosen, dups
 
 
-def llm_write_story(story, category):
+def llm_write_story(story, category, cfg):
     abroad = category != "CIS"
-    prompt = f"""Сделай разбор истории [{story['id']}].
+    scheme_keys = " | ".join(cfg.get("schemes") or {"other": None})
+    prompt = f"""Сделай разбор истории [{story['id']}]. Материал может быть на любом языке — пиши только по-русски.
 Верни JSON:
 {{"location": "где это произошло, по-русски: страна и город или область, например «Кыргызстан, Бишкек», «Кыргызстан, Чуйская область» или «США, Техас». Город или область пиши, только если они прямо названы в материале, не угадывай. Если не названы — только страна",
 "flag": "эмодзи-флаг этой страны",
-"country_tag": "страна одним словом для хэштега, например Кыргызстан, США, Германия",
+"country_tag": "страна по-русски одним словом для хэштега, например Кыргызстан, США, Германия, Бразилия",
+"scheme": "вид схемы, ровно один ключ из списка: {scheme_keys}",
 "what_happened": "2–3 предложения: что произошло",
 {STORY_FIELDS},
 "for_us": "{'1–2 предложения: может ли такая схема встретиться в СНГ и как она могла бы выглядеть у нас' if abroad else ''}"}}
 {kyrgyz_instruction()}
+
+Виды схем:
+{schemes_text(cfg)}
 
 Материал:
 {format_candidates([story], with_text=True)}"""
@@ -581,12 +637,27 @@ def hashtag(word):
     return f"#{word}" if word else ""
 
 
-def footer(cfg, category, country_tag=""):
+def scheme_key(cfg, value):
+    """Нормализует вид схемы из ответа ИИ к ключу из config.yaml (иначе other)."""
+    schemes = cfg.get("schemes") or {}
+    value = (value or "").strip().lower()
+    if value in schemes:
+        return value
+    for key, v in schemes.items():  # ИИ мог ответить хэштегом вместо ключа
+        if value and value.lstrip("#") == v.get("hashtag", "").lstrip("#").lower():
+            return key
+    return "other" if "other" in schemes else None
+
+
+def footer(cfg, category, country_tag="", scheme=None):
     parts = []
     cta = env("BOT_CTA")
     if cta:
         parts.append(cta)
-    tags = [cfg.get("hashtags", "")]
+    tags = []
+    if scheme and scheme in (cfg.get("schemes") or {}):
+        tags.append(cfg["schemes"][scheme]["hashtag"])
+    tags.append(cfg.get("hashtags", ""))
     if category in cfg.get("categories", {}):
         tags.append(cfg["categories"][category]["hashtag"])
     tag = hashtag(country_tag)
@@ -601,7 +672,7 @@ def build_story(cfg, data, category, item=None):
     d = lambda s: esc(defang(s or "", safe))  # noqa: E731
     flag = data.get("flag", "").strip()
     flag = "💡" if category == "TIP" else flag if FLAG_RE.match(flag) else "🌍"
-    location = data.get("location") or ("Напоминание" if not item else CATEGORY_NAMES.get(category, ""))
+    location = data.get("location") or ("Напоминание" if not item else cname(category))
 
     parts = [f"📍 <b>{flag} {d(location)}</b>", f"⚠️ <b>{d(data.get('title'))}</b>"]
     if data.get("what_happened"):
@@ -622,7 +693,7 @@ def build_story(cfg, data, category, item=None):
         parts.append(f"🇰🇬 <i>{d(data['ky'])}</i>")
     if item:
         parts.append(f"📰 Источник: {source_link(item)}")
-    parts.append(footer(cfg, category, data.get("country_tag", "")))
+    parts.append(footer(cfg, category, data.get("country_tag", ""), scheme_key(cfg, data.get("scheme"))))
 
     text = "\n\n".join(parts)
     if visible_len(text) > TELEGRAM_LIMIT:  # на всякий случай укорачиваем
@@ -633,7 +704,7 @@ def build_story(cfg, data, category, item=None):
 def build_headline(cfg, item, category):
     """Запасной вариант без ИИ: заголовок и ссылка."""
     return "\n\n".join([
-        f"📍 <b>{CATEGORY_NAMES.get(category, '').upper()}</b>",
+        f"📍 <b>{cname(category).upper()}</b>",
         f"⚠️ <b>{esc(item['title'])}</b>",
         f"📰 Источник: {source_link(item)}",
         footer(cfg, category),
@@ -654,23 +725,46 @@ def expand_dups(items):
     return out
 
 
-def make_story(cfg, cands, category):
-    """Возвращает (text, preview_url, used_items) или None."""
+def over_limit(cfg, meta, mix):
+    countries, schemes = mix
+    country, scheme = (meta.get("country") or "").lower(), meta.get("scheme")
+    if country and countries[country] >= cfg.get("max_per_country", 3):
+        return True
+    return bool(scheme and scheme != "other" and schemes[scheme] >= cfg.get("max_per_scheme", 3))
+
+
+def make_story(cfg, cands, category, mix=(Counter(), Counter())):
+    """Возвращает (text, preview_url, used_items, meta) или None."""
     if not llm_available():
         item = cands[0]
-        return build_headline(cfg, item, category), None, expand_dups([item])
+        return build_headline(cfg, item, category), None, expand_dups([item]), {}
 
-    chosen, dups = llm_pick(cands, category, cfg)
+    chosen, dups = llm_pick(cands, category, cfg, mix)
     if not chosen:
         return None
     attach_texts(chosen)
-    story = next((c for c in chosen if len(c.get("text", "")) > 500), chosen[0])
-    data = llm_write_story(story, category)
-    if not data or not data.get("title"):
+    # сначала истории, у которых удалось прочитать текст статьи (порядок качества от ИИ сохраняется)
+    ordered = sorted(chosen, key=lambda c: len(c.get("text", "")) <= 500)
+
+    picked = fallback = None
+    for story in ordered[:2]:  # не больше двух разборов за запуск
+        data = llm_write_story(story, category, cfg)
+        if not data or not data.get("title"):
+            continue
+        meta = {"scheme": scheme_key(cfg, data.get("scheme")), "country": (data.get("country_tag") or "").strip()}
+        if not over_limit(cfg, meta, mix):
+            picked = (story, data, meta)
+            break
+        log(f"  {meta['country']} / {meta['scheme']}: сегодня уже было достаточно, пробую следующую историю")
+        fallback = fallback or (story, data, meta)
+    picked = picked or fallback
+    if not picked:
         return None
+
+    story, data, meta = picked
     preview = story["link"] if "news.google.com" not in story["link"] else None
     extra = [c for c in chosen if c is not story and similar(c["norm"], story["norm"])]
-    return build_story(cfg, data, category, item=story), preview, expand_dups([story] + extra + dups)
+    return build_story(cfg, data, category, item=story), preview, expand_dups([story] + extra + dups), meta
 
 
 def make_evergreen(cfg, state):
@@ -693,35 +787,37 @@ def make_evergreen(cfg, state):
     data["location"] = "Напоминание о схеме"
     state["evergreen_index"] = idx + 1
     item = {"link": f"evergreen:{scheme}", "title": scheme}
-    return build_story(cfg, data, "TIP"), None, [item]
+    return build_story(cfg, data, "TIP"), None, [item], {}
 
 
 def run_once(cfg, state):
-    """Публикует следующий пост дня. Возвращает (text, preview, used, category) или None."""
+    """Публикует следующий пост дня. Возвращает (text, preview, used, meta, category) или None."""
     stats = today_stats(state)
     total = sum(stats.values())
-    limit = cfg.get("daily_limit", 10)
+    limit = cfg.get("daily_limit", 15)
+    mix = today_mix(state)
+    mix = (Counter({k.lower(): v for k, v in mix[0].items()}), mix[1])
     log(f"Сегодня уже опубликовано: {total} из {limit} "
-        f"({', '.join(f'{CATEGORY_NAMES.get(k, k)}: {v}' for k, v in stats.items()) or 'пока ничего'})")
+        f"({', '.join(f'{cname(k)}: {v}' for k, v in stats.items()) or 'пока ничего'}); {mix_text(cfg, mix)}")
     if total >= limit:
         log("Дневной лимит выполнен.")
         return None
 
     forced = env("CATEGORY", "auto").upper()
     order = [forced] if forced in cfg["categories"] else category_order(cfg, stats)
-    log(f"Рубрика по плану: {CATEGORY_NAMES[order[0]]}" + (f", запасные: {[CATEGORY_NAMES[c] for c in order[1:]]}" if len(order) > 1 else ""))
+    log(f"Рубрика по плану: {cname(order[0])}" + (f", запасные: {[cname(c) for c in order[1:]]}" if len(order) > 1 else ""))
 
     cands = select_candidates(collect(cfg), state, cfg)
     for category in order:
         subset = candidates_for(cands, category)
         if not subset:
-            log(f"  {CATEGORY_NAMES[category]}: свежих историй нет")
+            log(f"  {cname(category)}: свежих историй нет")
             continue
-        log(f"Ищу историю для рубрики «{CATEGORY_NAMES[category]}» среди {len(subset)} новостей")
-        result = make_story(cfg, subset, category)
+        log(f"Ищу историю для рубрики «{cname(category)}» среди {len(subset)} новостей")
+        result = make_story(cfg, subset, category, mix)
         if result:
             return (*result, category)
-        log(f"  {CATEGORY_NAMES[category]}: подходящей истории не нашлось")
+        log(f"  {cname(category)}: подходящей истории не нашлось")
 
     if stats.get("TIP", 0) < cfg.get("evergreen_max_per_day", 1):
         result = make_evergreen(cfg, state)
@@ -830,13 +926,13 @@ def main(argv):
         log("Публиковать нечего — пропускаю этот запуск.")
         return
 
-    text, preview, used, category = result
+    text, preview, used, meta, category = result
     log("\n──────── пост ────────\n" + text + "\n──────────────────────")
     if dry:
         log("Тестовый режим: пост не отправлен, список опубликованного не изменён.")
         return
     send_post(text, preview, silent=is_silent(category))
-    mark_posted(state, used, category)
+    mark_posted(state, used, category, meta)
     save_state(state)
 
 
