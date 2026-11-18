@@ -1,4 +1,4 @@
-name: Antiscam — проверка подключения
+name: Antiscam setup
 
 on:
   workflow_dispatch:

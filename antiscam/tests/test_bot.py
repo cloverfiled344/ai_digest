@@ -41,6 +41,12 @@ GOOGLE_WORLD = f"""<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><cha
 <source url="https://bbc.co.uk">BBC</source></item>
 </channel></rss>"""
 
+GOOGLE_DE = f"""<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"><channel><title>g</title>
+<item><title>Polizei warnt vor Betrug mit falschen Paketbenachrichtigungen in München - Merkur</title>
+<link>https://news.google.com/rss/articles/AU_yqLde1?oc=5</link><pubDate>{rfc(6)}</pubDate>
+<source url="https://merkur.de">Merkur</source></item>
+</channel></rss>"""
+
 BING_RSS = f"""<?xml version="1.0" encoding="utf-8"?><rss xmlns:News="https://www.bing.com/news/search?q=x&amp;format=rss" version="2.0"><channel><title>b</title>
 <item><title>Мошенники рассылают фальшивые уведомления от Казпочты в Казахстане</title>
 <link>http://www.bing.com/news/apiclick.aspx?ref=FexRss&amp;aid=&amp;tid=1&amp;url=https%3a%2f%2finformburo.kz%2fnovosti%2fkazpost-fishing&amp;c=1&amp;mkt=ru-ru</link>
@@ -87,6 +93,7 @@ def cfg(tmp_path, monkeypatch):
     c = bot.load_config()
     bot.CONFIG = c
     monkeypatch.setattr(bot, "STATE_PATH", str(tmp_path / "posted.json"))
+    monkeypatch.setattr(bot, "LLM_ERRORS", [])
     for k in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "ANTHROPIC_API_KEY", "GEMINI_API_KEY",
               "CATEGORY", "DRY_RUN", "BOT_CTA", "ADD_KYRGYZ"):
         monkeypatch.delenv(k, raising=False)
@@ -101,7 +108,11 @@ def fake_net(monkeypatch):
                 return FakeResp(GOOGLE_US)
             if "en-GB" in url:
                 return FakeResp(GOOGLE_WORLD)
-            return FakeResp(GOOGLE_KG)
+            if "ceid=DE" in url:
+                return FakeResp(GOOGLE_DE)
+            if "hl=ru" in url:
+                return FakeResp(GOOGLE_KG)
+            return FakeResp(b"<rss><channel></channel></rss>")
         if "bing.com" in url:
             return FakeResp(BING_RSS)
         if "24.kg/rss" in url or "gazeta.uz/ru/rss" in url:
@@ -112,27 +123,37 @@ def fake_net(monkeypatch):
     monkeypatch.setattr(bot.SESSION, "get", fake_get)
 
 
+LOCATIONS = [
+    ("Texas", {"location": "США, Техас", "flag": "🇺🇸", "country_tag": "США", "scheme": "phishing"}),
+    ("Manchester", {"location": "Великобритания, Манчестер", "flag": "🇬🇧", "country_tag": "Великобритания",
+                    "scheme": "phishing"}),
+    ("München", {"location": "Германия, Мюнхен", "flag": "🇩🇪", "country_tag": "Германия", "scheme": "#фишинг"}),
+    ("Казпочт", {"location": "Казахстан", "flag": "🇰🇿", "country_tag": "Казахстан", "scheme": "phishing"}),
+    ("Ташкент", {"location": "Узбекистан, Ташкент", "flag": "🇺🇿", "country_tag": "Узбекистан", "scheme": "prepayment"}),
+]
+
+
 def fake_llm(system, user, key):
-    """Подставной ИИ: выбирает первую новость и пишет разбор с местом по заголовку."""
+    """Подставной ИИ: выбирает первые новости и пишет разбор с местом по тексту материала."""
     ids = re.findall(r"\[(n\d+)\]", user)
-    if "Выбери до 2" in user:
-        return json.dumps({"ids": ids[:1], "duplicates": []})
+    if "Выбери до 3" in user:
+        return json.dumps({"ids": ids[:3], "duplicates": []})
     if "Свежих новостей нет" in user:
         return json.dumps({"title": "Посылка, которую вы не заказывали", "intro": "Схема живучая.",
                            "how_it_works": "Ссылка на «доставку».", "red_flags": ["Срочность"],
                            "what_to_do": ["Не переходите по ссылке"], "ky": ""}, ensure_ascii=False)
-    if "Texas" in user:
-        loc = {"location": "США, Техас", "flag": "🇺🇸", "country_tag": "США"}
-    elif "Manchester" in user:
-        loc = {"location": "Великобритания, Манчестер", "flag": "🇬🇧", "country_tag": "Великобритания"}
-    elif "Казпочт" in user:
-        loc = {"location": "Казахстан", "flag": "🇰🇿", "country_tag": "Казахстан"}
-    else:
-        loc = {"location": "Кыргызстан, Бишкек", "flag": "🇰🇬", "country_tag": "Кыргызстан"}
-    return json.dumps({**loc, "title": "Разбор <b>истории</b>", "what_happened": "Брали предоплату, сайт https://evil-pay.site",
+    material = user.split("Материал:")[-1]
+    loc = next((v for k, v in LOCATIONS if k in material),
+               {"location": "Кыргызстан, Бишкек", "flag": "🇰🇬", "country_tag": "Кыргызстан", "scheme": "prepayment"})
+    return json.dumps({**loc, "title": "Разбор <b>истории</b>", "what_happened": "Брали деньги, сайт https://evil-pay.site",
                        "how_it_works": "Низкая цена и срочность.", "red_flags": ["Цена ниже рынка", "Торопят"],
                        "what_to_do": ["Звоните в банк"], "for_us": "Да, у нас похожие SMS тоже ходят.", "ky": ""},
                       ensure_ascii=False)
+
+
+def today_rec(i, category, **extra):
+    return {"url": f"u{i}", "title": f"заглушка номер {i}", "ts": bot.now_utc().isoformat(),
+            "date": bot.local_now().date().isoformat(), "category": category, "counted": True, **extra}
 
 
 def test_decoders():
@@ -159,94 +180,128 @@ def test_collect_categories_and_dedup(cfg, fake_net):
     arenda = [c for c in cands if "аренд" in c["title"].lower()]
     assert len(arenda) == 1 and arenda[0]["kind"] == "rss"          # дубль из Google склеен
     by_title = {c["title"]: c["category"] for c in cands}
-    assert by_title["FBI warns of toll road text scam targeting drivers in Texas"] == "USA"
+    assert by_title["FBI warns of toll road text scam targeting drivers in Texas"] == "WORLD"   # США — часть мира
     assert by_title["Police warn of fake parking QR code scam in Manchester"] == "WORLD"
+    assert by_title["Polizei warnt vor Betrug mit falschen Paketbenachrichtigungen in München"] == "WORLD"  # немецкий
     assert arenda[0]["category"] == "CIS" and arenda[0]["country"] == "KG"
     assert cands[0]["country"] == "KG"                                # Кыргызстан выше всех
 
 
 def test_plan_order(cfg):
+    assert Counter(cfg["plan"]) == Counter({"CIS": 3, "WORLD": 12}) and cfg["daily_limit"] == 15
     assert bot.category_order(cfg, Counter())[0] == "CIS"
     assert bot.category_order(cfg, Counter({"CIS": 1}))[0] == "WORLD"
-    assert bot.category_order(cfg, Counter({"CIS": 2, "WORLD": 1}))[0] == "USA"
-    assert bot.category_order(cfg, Counter({"CIS": 5, "WORLD": 3, "USA": 1})) == ["USA"]
-    assert bot.category_order(cfg, Counter({"CIS": 5, "WORLD": 3, "USA": 2})) == ["CIS", "WORLD", "USA"]
-    assert Counter(cfg["plan"]) == Counter({"CIS": 5, "WORLD": 3, "USA": 2})
+    assert bot.category_order(cfg, Counter({"CIS": 1, "WORLD": 4}))[0] == "CIS"
+    # СНГ не нашлось утром — слот СНГ остаётся первым в очереди и пробуется снова
+    assert bot.category_order(cfg, Counter({"WORLD": 2})) == ["CIS", "WORLD"]
+    assert bot.category_order(cfg, Counter({"CIS": 3, "WORLD": 12})) == ["CIS", "WORLD"]
+
+
+def test_legacy_usa_counts_as_world(cfg):
+    state = {"posted": [today_rec(1, "USA"), today_rec(2, "CIS")], "evergreen_index": 0}
+    assert bot.today_stats(state) == Counter({"WORLD": 1, "CIS": 1})
 
 
 def test_full_day(cfg, fake_net, monkeypatch):
-    """Прогон целого дня: квоты, жирная локация, лимит 10, напоминание, когда новости кончились."""
+    """Прогон дня: СНГ первым, мир, рубрики-хэштеги, место жирным, напоминание не больше раза."""
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
     monkeypatch.setenv("BOT_CTA", "🔍 Проверить ссылку: @test_bot")
     monkeypatch.setattr(bot, "call_anthropic", fake_llm)
     state = bot.load_state()
     posted = []
-    for _ in range(12):
+    for _ in range(17):
         res = bot.run_once(cfg, state)
         if not res:
-            posted.append(None)
             continue
-        text, preview, used, category = res
-        posted.append((category, text))
-        bot.mark_posted(state, used, category)
+        text, preview, used, meta, category = res
+        posted.append((category, text, meta))
+        bot.mark_posted(state, used, category, meta)
 
-    real = [p for p in posted if p]
-    cats = [c for c, _ in real]
-    assert cats[0] == "CIS"
-    assert "USA" in cats and "WORLD" in cats and "TIP" in cats
-    assert len(real) <= cfg["daily_limit"]
-    assert cats.count("TIP") == 1                                   # напоминание максимум раз в день
+    cats = [c for c, _, _ in posted]
+    assert cats[0] == "CIS" and "WORLD" in cats and cats.count("TIP") == 1
+    assert len(posted) <= cfg["daily_limit"]
+    assert cats.count("CIS") >= 2                                     # минимум 2 СНГ за день
 
-    for cat, text in real:
-        assert text.startswith("📍 <b>")                           # место — первой строкой, жирным
+    for cat, text, meta in posted:
+        assert text.startswith("📍 <b>")
         for tag in ("b", "i", "a"):
             assert text.count(f"<{tag}") == text.count(f"</{tag}>"), (tag, text)
-        assert bot.visible_len(text) < 4096
-        assert "@test_bot" in text and "#разбор" in text
-    cis_text = next(t for c, t in real if c == "CIS")
+        assert bot.visible_len(text) < 4096 and "@test_bot" in text and "#разбор" in text
+    cis_text = next(t for c, t, _ in posted if c == "CIS")
     assert "📍 <b>🇰🇬 Кыргызстан, Бишкек</b>" in cis_text and "#СНГ" in cis_text and "#Кыргызстан" in cis_text
+    assert "#предоплата" in cis_text
     assert "Разбор &lt;b&gt;истории&lt;/b&gt;" in cis_text            # HTML от ИИ экранирован
     assert "hxxps://evil-pay[.]site" in cis_text and "https://evil-pay.site" not in cis_text
     assert "Может ли это случиться у нас" not in cis_text
-    us_text = next(t for c, t in real if c == "USA")
-    assert "📍 <b>🇺🇸 США, Техас</b>" in us_text and "Может ли это случиться у нас" in us_text and "#США" in us_text
-    tip_text = next(t for c, t in real if c == "TIP")
+    us_text = next(t for c, t, _ in posted if "США, Техас" in t)
+    assert "📍 <b>🇺🇸 США, Техас</b>" in us_text and "Может ли это случиться у нас" in us_text
+    assert "#мир" in us_text and "#США" in us_text and "#фишинг" in us_text
+    de_text = next(t for c, t, _ in posted if "Германия" in t)
+    assert "#фишинг" in de_text                                       # ИИ ответил хэштегом — распознан
+    tip_text = next(t for c, t, _ in posted if c == "TIP")
     assert tip_text.startswith("📍 <b>💡 Напоминание о схеме</b>")
+    # память хранит страну и вид схемы
+    countries, schemes = bot.today_mix(state)
+    assert countries["США"] == 1 and schemes["phishing"] >= 3
 
 
-def test_daily_limit(cfg, fake_net, monkeypatch):
+def test_diversity_limits(cfg, fake_net, monkeypatch):
+    """Если США сегодня уже было 3 раза, бот берёт следующую историю из другой страны."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
+    seen = []
+
+    def llm(system, user, key):
+        seen.append(user)
+        if "Выбери до 3" in user:
+            ids = re.findall(r"\[(n\d+)\] .*?\| (.*)", user)
+            order = sorted(ids, key=lambda x: "Texas" not in x[1])   # американская история первой
+            return json.dumps({"ids": [i for i, _ in order][:3], "duplicates": []})
+        return fake_llm(system, user, key)
+
+    monkeypatch.setattr(bot, "call_anthropic", llm)
     state = bot.load_state()
-    day = bot.local_now().date().isoformat()
-    state["posted"] = [{"url": f"u{i}", "title": f"t{i}", "ts": bot.now_utc().isoformat(), "date": day,
-                        "category": "CIS", "counted": True} for i in range(10)]
+    state["posted"] = [today_rec(i, "WORLD", country="США", scheme="investment") for i in range(3)]
+    state["posted"].append(today_rec(9, "CIS", country="Кыргызстан", scheme="prepayment"))
+    monkeypatch.setenv("CATEGORY", "WORLD")
+    text, preview, used, meta, category = bot.run_once(cfg, state)
+    assert meta["country"] != "США" and "США, Техас" not in text
+    pick_prompt = next(u for u in seen if "Выбери до 3" in u)
+    assert "сша ×3" in pick_prompt and "#инвестиции ×3" in pick_prompt
+
+
+def test_scheme_key(cfg):
+    assert bot.scheme_key(cfg, "phishing") == "phishing"
+    assert bot.scheme_key(cfg, "#звонок_из_банка") == "bank_call"
+    assert bot.scheme_key(cfg, "что-то новое") == "other"
+
+
+def test_daily_limit(cfg, fake_net):
+    state = bot.load_state()
+    state["posted"] = [today_rec(i, "WORLD") for i in range(15)]
     assert bot.run_once(cfg, state) is None
 
 
-def test_fallback_to_other_category(cfg, fake_net, monkeypatch):
-    """Если по плану США, а американских новостей нет — берём следующую рубрику."""
+def test_fallback_when_no_cis(cfg, fake_net, monkeypatch):
+    """По плану СНГ, но все истории СНГ уже вышли — публикуется мир."""
     monkeypatch.setenv("GEMINI_API_KEY", "test")
     monkeypatch.setattr(bot, "call_gemini", fake_llm)
     state = bot.load_state()
-    day = bot.local_now().date().isoformat()
-    # уже вышли 2 СНГ и 1 мир → по плану США
-    state["posted"] = [{"url": f"u{i}", "title": f"x{i}", "ts": bot.now_utc().isoformat(), "date": day,
-                        "category": c, "counted": True} for i, c in enumerate(["CIS", "CIS", "WORLD"])]
-    # американскую новость считаем уже опубликованной
-    state["posted"].append({"url": "https://news.google.com/rss/articles/AU_yqLus1?oc=5", "title": "FBI warns",
-                            "ts": bot.now_utc().isoformat(), "date": day, "category": "USA", "counted": False})
-    text, preview, used, category = bot.run_once(cfg, state)
-    assert category in ("CIS", "WORLD")
+    for c in bot.select_candidates(bot.collect(cfg), state, cfg):
+        if c["category"] in ("CIS", None):
+            bot.mark_posted(state, bot.expand_dups([c]), "CIS")
+    state["posted"] = [dict(p, date="2000-01-01") for p in state["posted"]]  # вчерашние — не в счёт плана
+    text, preview, used, meta, category = bot.run_once(cfg, state)
+    assert category == "WORLD"
 
 
 def test_no_llm_headline(cfg, fake_net):
-    text, preview, used, category = bot.run_once(cfg, bot.load_state())
+    text, preview, used, meta, category = bot.run_once(cfg, bot.load_state())
     assert category == "CIS" and text.startswith("📍 <b>СНГ</b>") and "<a href=" in text
 
 
 def test_state_prevents_repeat(cfg, fake_net):
     state = bot.load_state()
-    cands = bot.select_candidates(bot.collect(cfg), state, cfg)
-    for c in cands:
+    for c in bot.select_candidates(bot.collect(cfg), state, cfg):
         bot.mark_posted(state, bot.expand_dups([c]), c["category"] or "WORLD")
     bot.save_state(state)
     assert bot.select_candidates(bot.collect(cfg), bot.load_state(), cfg) == []
@@ -269,7 +324,7 @@ def test_send_post_fallback_and_silent(cfg, monkeypatch):
     assert sent[1]["text"] == "Тест & ок" and "parse_mode" not in sent[1] and sent[1]["disable_notification"] is True
 
 
-def test_main_dry_run(cfg, fake_net, monkeypatch, capsys):
+def test_main_dry_run(cfg, fake_net, capsys):
     bot.main([])
     out = capsys.readouterr().out
     assert "тестовый режим" in out and "──────── пост" in out
@@ -281,7 +336,7 @@ def test_quiet_hours(cfg, monkeypatch):
         fixed = datetime(2026, 11, 17, hour, 30, tzinfo=bot.local_tz())
         monkeypatch.setattr(bot, "local_now", lambda: fixed)
     at(12)
-    assert bot.is_silent("CIS") is False and bot.is_silent("USA") is True
+    assert bot.is_silent("CIS") is False and bot.is_silent("WORLD") is True
     at(23)
     assert bot.is_silent("CIS") is True
     at(3)
@@ -319,7 +374,6 @@ def test_claude_request_has_no_temperature(cfg, monkeypatch):
 def test_run_fails_loudly_when_ai_errors(cfg, fake_net, monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
     monkeypatch.setattr(bot.time, "sleep", lambda s: None)
-    monkeypatch.setattr(bot, "LLM_ERRORS", [])
 
     def broken(system, user, key):
         raise ValueError("model rejected request")

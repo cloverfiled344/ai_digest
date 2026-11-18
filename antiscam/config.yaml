@@ -7,14 +7,19 @@ utc_offset_hours: 6
 lookback_hours: 36
 
 # Не больше стольких постов в день
-daily_limit: 10
+daily_limit: 15
 
 # Порядок рубрик в течение дня: каждый запуск публикует следующую.
-# Сейчас: 5 × СНГ, 3 × мир, 2 × США. Меняйте порядок и состав как хотите.
-plan: [CIS, WORLD, CIS, USA, CIS, WORLD, CIS, USA, CIS, WORLD]
+# Сейчас: 3 × СНГ (утро, день, вечер) и 12 × остальной мир.
+# Если в час СНГ свежего СНГ нет, выйдет мир, а СНГ попробуется снова в следующий запуск.
+plan: [CIS, WORLD, WORLD, WORLD, WORLD, CIS, WORLD, WORLD, WORLD, WORLD, CIS, WORLD, WORLD, WORLD, WORLD]
 
-# Посты этих рубрик уходят без звука, чтобы не надоедать подписчикам
-silent_categories: [USA, WORLD]
+# Разнообразие: одна страна и один вид схемы — не больше стольких раз в день
+max_per_country: 3
+max_per_scheme: 3
+
+# Посты этих рубрик уходят без звука, чтобы не надоедать подписчикам (со звуком — только СНГ, 3 в день)
+silent_categories: [WORLD]
 
 # Тихие часы: в это время все посты уходят без звука (расписание GitHub может опаздывать)
 quiet_hours:
@@ -24,20 +29,51 @@ quiet_hours:
 # Если свежих историй нет ни в одной рубрике — сколько раз в день можно опубликовать напоминание о типичной схеме
 evergreen_max_per_day: 1
 
-# Рубрики: название, хэштег и что считается рубрикой (это читает ИИ при отборе)
+# Рубрики по географии: название, хэштег и что считается рубрикой (это читает ИИ при отборе).
+# Порядок важен: если рубрика по плану пустая, бот пробует следующие по этому списку.
 categories:
   CIS:
+    name: "СНГ"
     hashtag: "#СНГ"
     describe: "в странах СНГ: Кыргызстан, Казахстан, Узбекистан, Таджикистан, Туркменистан, Россия, Беларусь, Армения, Азербайджан, Молдова. Приоритет — Кыргызстан, затем Узбекистан и Казахстан"
-  USA:
-    hashtag: "#США"
-    describe: "в США"
   WORLD:
+    name: "мир"
     hashtag: "#мир"
-    describe: "в любой стране мира, кроме США и стран СНГ (Европа, Азия, Ближний Восток, Латинская Америка, Африка, Австралия)"
+    describe: "в любой стране мира, кроме стран СНГ: США, Европа, Азия, Ближний Восток, Латинская Америка, Африка, Австралия"
 
-# Хэштеги в конце каждого поста
-hashtags: "#разбор #мошенники"
+# Рубрики по видам схем: ИИ относит каждую историю к одному виду, под постом появляется его хэштег.
+# В закреплённом посте эти хэштеги работают как оглавление.
+schemes:
+  bank_call:
+    hashtag: "#звонок_из_банка"
+    describe: "звонки и сообщения от имени банков, полиции, операторов связи, госорганов"
+  phishing:
+    hashtag: "#фишинг"
+    describe: "фишинговые ссылки, SMS о посылках, штрафах и долгах, поддельные сайты и QR-коды"
+  prepayment:
+    hashtag: "#предоплата"
+    describe: "фейковые продавцы и магазины, аренда, доски объявлений, «покупатели» со ссылкой на оплату"
+  investment:
+    hashtag: "#инвестиции"
+    describe: "лжеброкеры, криптовалюта, финансовые пирамиды, «пассивный доход»"
+  hacking:
+    hashtag: "#взлом"
+    describe: "угон аккаунтов Telegram, WhatsApp и соцсетей, коды из SMS, «проголосуй за меня»"
+  relative:
+    hashtag: "#родственник"
+    describe: "«родственник или друг в беде», поддельные голоса и видео (дипфейки)"
+  job:
+    hashtag: "#работа"
+    describe: "дропперы, «лёгкий заработок», фейковые вакансии и задания за деньги"
+  romance:
+    hashtag: "#знакомства"
+    describe: "романтические аферы и мошенничество на сайтах знакомств"
+  other:
+    hashtag: "#другие_схемы"
+    describe: "всё, что не подходит под остальные виды"
+
+# Хэштег в конце каждого поста
+hashtags: "#разбор"
 
 # Типичные схемы для напоминаний (по кругу)
 evergreen:
@@ -54,6 +90,7 @@ evergreen:
 
 # Новость попадает в отбор, только если в заголовке или описании есть хоть одно из этих слов (части слов)
 keywords:
+  # русский и языки Центральной Азии
   - мошен
   - афер
   - обман
@@ -72,6 +109,7 @@ keywords:
   - алаяқ        # казахский
   - firibgar     # узбекский (латиница)
   - фирибгар     # узбекский (кириллица)
+  # английский
   - scam
   - fraud
   - phishing
@@ -79,15 +117,26 @@ keywords:
   - impersonat
   - con artist
   - money mule
+  # немецкий, французский, испанский, португальский, итальянский, турецкий
+  - betrug
+  - betrüger
+  - abzocke
+  - arnaque
+  - escroquer
+  - escroc
+  - estafa
+  - golpe
+  - golpista
+  - truffa
+  - truffator
+  - dolandırıc
 
-# Слова для предварительного определения рубрики (окончательно решает ИИ)
+# Слова для предварительного определения СНГ (окончательно решает ИИ)
 regions:
   CIS: [кыргыз, киргиз, бишкек, " ош ", "в оше", чуй, иссык, нарын, талас, джалал, баткен, "мвд кр",
         узбек, ташкент, самарканд, бухар, наманган, андижан, фергана, казах, алматы, астана, шымкент, караганд,
         таджик, душанбе, туркмен, росси, москв, петербург, беларус, минск, армен, ереван, азербайдж, баку, молдов, кишин,
         kyrgyz, bishkek, uzbek, tashkent, kazakh, almaty, astana, tajik, russia, moscow, belarus, armenia, azerbaijan, moldova]
-  USA: [сша, америк, фбр, нью-йорк, калифорн, техас, флорид, "u.s.", "united states", fbi, " ftc", "ic3",
-        california, texas, florida, "new york", ohio, georgia, arizona, illinois, michigan, pennsylvania, americans]
 
 # Внутри СНГ эти страны поднимаются выше в отборе
 priority:
@@ -105,7 +154,8 @@ google_params: "hl=ru&gl=RU&ceid=RU:ru"
 google_when: "2d"
 
 # Источники. type: google — поиск Google Новостей, bing — поиск Bing News, rss — лента сайта.
-# category — подсказка, к какой рубрике обычно относятся новости (CIS / USA / WORLD); без неё решает ИИ.
+# category — подсказка, к какой рубрике обычно относятся новости (CIS / WORLD); без неё решает ИИ.
+# Новости на любом языке: ИИ всё равно пишет пост по-русски.
 # Если источник в логах пишет ошибку — просто удалите его строки, бот работает и без него.
 sources:
   # ── СНГ ──
@@ -174,41 +224,101 @@ sources:
     url: "https://tengrinews.kz/news.rss"
     category: CIS
 
-  # ── США ──
+  # ── Мир: США ──
   - name: "Google US: предупреждения"
     type: google
     query: "scam warning FBI OR FTC OR police"
     google_params: "hl=en-US&gl=US&ceid=US:en"
-    category: USA
+    category: WORLD
   - name: "Google US: задержания"
     type: google
     query: "scammers arrested OR charged"
     google_params: "hl=en-US&gl=US&ceid=US:en"
-    category: USA
-  - name: "Google: мошенники в США"
-    type: google
-    query: "мошенники США"
-    category: USA
+    category: WORLD
   - name: "Bing US"
     type: bing
     query: "new scam alert"
     bing_params: "setlang=en&cc=US"
-    category: USA
+    category: WORLD
 
-  # ── Мир ──
-  - name: "Google World: предупреждения"
+  # ── Мир: англоязычные страны ──
+  - name: "Google UK"
     type: google
     query: "scam warning police"
     google_params: "hl=en-GB&gl=GB&ceid=GB:en"
     category: WORLD
-  - name: "Google World: новые схемы"
+  - name: "Google Канада"
     type: google
-    query: "new scam Europe OR Asia OR Australia OR India"
-    google_params: "hl=en-GB&gl=GB&ceid=GB:en"
+    query: "scam warning police"
+    google_params: "hl=en-CA&gl=CA&ceid=CA:en"
     category: WORLD
+  - name: "Google Австралия"
+    type: google
+    query: "scam warning"
+    google_params: "hl=en-AU&gl=AU&ceid=AU:en"
+    category: WORLD
+  - name: "Google Индия"
+    type: google
+    query: "scam police alert"
+    google_params: "hl=en-IN&gl=IN&ceid=IN:en"
+    category: WORLD
+  - name: "Google Сингапур"
+    type: google
+    query: "scam alert"
+    google_params: "hl=en-SG&gl=SG&ceid=SG:en"
+    category: WORLD
+  - name: "Google ЮАР"
+    type: google
+    query: "scam warning"
+    google_params: "hl=en-ZA&gl=ZA&ceid=ZA:en"
+    category: WORLD
+  - name: "Google Нигерия"
+    type: google
+    query: "fraud scam police"
+    google_params: "hl=en-NG&gl=NG&ceid=NG:en"
+    category: WORLD
+
+  # ── Мир: другие языки ──
+  - name: "Google Германия"
+    type: google
+    query: "Betrug Polizei warnt"
+    google_params: "hl=de&gl=DE&ceid=DE:de"
+    category: WORLD
+  - name: "Google Франция"
+    type: google
+    query: "arnaque escroquerie"
+    google_params: "hl=fr&gl=FR&ceid=FR:fr"
+    category: WORLD
+  - name: "Google Испания"
+    type: google
+    query: "estafa alerta policía"
+    google_params: "hl=es&gl=ES&ceid=ES:es"
+    category: WORLD
+  - name: "Google Латинская Америка"
+    type: google
+    query: "estafa alerta"
+    google_params: "hl=es-419&gl=MX&ceid=MX:es-419"
+    category: WORLD
+  - name: "Google Бразилия"
+    type: google
+    query: "golpe alerta polícia"
+    google_params: "hl=pt-BR&gl=BR&ceid=BR:pt-419"
+    category: WORLD
+  - name: "Google Италия"
+    type: google
+    query: "truffa polizia"
+    google_params: "hl=it&gl=IT&ceid=IT:it"
+    category: WORLD
+  - name: "Google Турция"
+    type: google
+    query: "dolandırıcılık uyarı"
+    google_params: "hl=tr&gl=TR&ceid=TR:tr"
+    category: WORLD
+
+  # ── Мир: на русском и про кибербезопасность ──
   - name: "Google: мошенники в мире"
     type: google
-    query: "мошенники Европа OR Китай OR Турция OR Индия OR Германия"
+    query: "мошенники Европа OR Китай OR Турция OR Индия OR Германия OR США"
     category: WORLD
   - name: "BleepingComputer"
     type: rss

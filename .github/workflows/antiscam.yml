@@ -1,18 +1,19 @@
-name: Antiscam — разборы
+name: Antiscam posts
 
 on:
   schedule:
-    # Время в UTC, Бишкек = UTC+6. 10 запусков: 8:19, 9:49, 11:19, 12:49, 14:19, 15:49, 17:19, 18:49, 20:19, 21:49.
+    # Время в UTC, Бишкек = UTC+6. Каждый час с 8:17 до 22:17 — 15 запусков, по посту за запуск (daily_limit: 15).
+    # Плюс 2 запасных в 21:47 и 22:47: если GitHub пропустит запуск днём, пост доберётся вечером.
     # Бесплатное расписание GitHub опаздывает. Если запуск съедет на ночь, пост уйдёт без звука (quiet_hours в antiscam/config.yaml).
-    - cron: "19 2,5,8,11,14 * * *"
-    - cron: "49 3,6,9,12,15 * * *"
+    - cron: "17 2-16 * * *"
+    - cron: "47 15,16 * * *"
   workflow_dispatch:             # кнопка «Run workflow» для ручного запуска
     inputs:
       category:
         description: "Рубрика (auto — по плану дня)"
         type: choice
         default: auto
-        options: [auto, CIS, USA, WORLD]
+        options: [auto, CIS, WORLD]
       dry_run:
         description: "Тест: только показать пост в логе, не отправлять"
         type: boolean
