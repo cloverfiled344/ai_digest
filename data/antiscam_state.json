@@ -187,6 +187,32 @@
    "date": "2026-11-19",
    "category": "CIS",
    "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMimAFBVV95cUxNYjVZNkhkMkZuNDdsUHpKR05RN0V3UjRjOWhFbDNsZTNlME5vczRDZkR4NmFjWllpc2JKVmVkdjZST3ZhdElvbG9qZ0hfb1U1QTZiYWdzMG5HNWtYdTlhdUdTSDBJdzdUdmpNUGJTVFVoZy1aZGZoTWtwUzFsRzlxQnoyMjY3NjRxSFRjendIZ2ZvXzZJYV83Tw?oc=5",
+   "title": "B.C. victim loses $60K to scammer impersonating police",
+   "ts": "2026-11-19T14:53:31.470212+00:00",
+   "date": "2026-11-19",
+   "category": "WORLD",
+   "counted": true,
+   "scheme": "bank_call",
+   "country": "Канада"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMimAFBVV95cUxNYjVZNkhkMkZuNDdsUHpKR05RN0V3UjRjOWhFbDNsZTNlME5vczRDZkR4NmFjWllpc2JKVmVkdjZST3ZhdElvbG9qZ0hfb1U1QTZiYWdzMG5HNWtYdTlhdUdTSDBJdzdUdmpNUGJTVFVoZy1aZGZoTWtwUzFsRzlxQnoyMjY3NjRxSFRjendIZ2ZvXzZJYV83Tw?oc=5",
+   "title": "B.C. victim loses $60K to scammer impersonating police",
+   "ts": "2026-11-19T14:53:31.470212+00:00",
+   "date": "2026-11-19",
+   "category": "WORLD",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMimAFBVV95cUxNYjVZNkhkMkZuNDdsUHpKR05RN0V3UjRjOWhFbDNsZTNlME5vczRDZkR4NmFjWllpc2JKVmVkdjZST3ZhdElvbG9qZ0hfb1U1QTZiYWdzMG5HNWtYdTlhdUdTSDBJdzdUdmpNUGJTVFVoZy1aZGZoTWtwUzFsRzlxQnoyMjY3NjRxSFRjendIZ2ZvXzZJYV83Tw?oc=5",
+   "title": "B.C. victim loses $60K to scammer impersonating police",
+   "ts": "2026-11-19T14:53:31.470212+00:00",
+   "date": "2026-11-19",
+   "category": "WORLD",
+   "counted": false
   }
  ],
  "evergreen_index": 0,
