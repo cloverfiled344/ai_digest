@@ -579,6 +579,32 @@
    "date": "2026-11-19",
    "category": "WORLD",
    "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMizAFBVV95cUxPazFuakpfa3gwaGF5eUNEdHpUQTJEYlRoZ2FvM3VJTGtPYUNmWVNGYThPRXZDZVpzSThHRDNxbUFURXZaSFNHWjVob1gtb25nWEtfYXdMQ1k4ZW4yTU1SNVhGbW1nMkZIcXRfZEc0OVRDY2tXME43TzdLd0RENS14MDhsSURTVGNqOXU2QW1ISkZ5VXVRLURMdU94UzJxdzJ6TVEyUTd1RGpHcWxjdFlBZ3plZ3pHbmNJTk9Ec2hOMDluTHJVa1lYcjk3Rzg?oc=5",
+   "title": "Truffa del finto carabiniere, anziana cade nella trappola e consegna i gioielli",
+   "ts": "2026-11-19T16:36:49.629954+00:00",
+   "date": "2026-11-19",
+   "category": "WORLD",
+   "counted": true,
+   "scheme": "bank_call",
+   "country": "Италия"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiqwFBVV95cUxOb1BjT3dfLUdTYjdyT1JQYXdYQUQ1SFNDMUlHckdPcVNpZGVORjBTOUhmdjNYUVo2eTljNWtwV2RMU3F2dDh1RGxPUW1UaHFBbEVfQ1NVeXlqdGFPT1h4STNVNGQ3YUs0dmthOENZdGV1TzJLRjQ2T0hGM2xMV0VGWUlaZEpULXZralZ1ZV9IcS1FS29EVDZFckJhU0luckVmODhGYTc4UzVSQU0?oc=5",
+   "title": "Gurugram police arrest 17 in fake call centre scam targeting US and Canada",
+   "ts": "2026-11-19T16:36:49.629954+00:00",
+   "date": "2026-11-19",
+   "category": "WORLD",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiqwFBVV95cUxOb1BjT3dfLUdTYjdyT1JQYXdYQUQ1SFNDMUlHckdPcVNpZGVORjBTOUhmdjNYUVo2eTljNWtwV2RMU3F2dDh1RGxPUW1UaHFBbEVfQ1NVeXlqdGFPT1h4STNVNGQ3YUs0dmthOENZdGV1TzJLRjQ2T0hGM2xMV0VGWUlaZEpULXZralZ1ZV9IcS1FS29EVDZFckJhU0luckVmODhGYTc4UzVSQU0?oc=5",
+   "title": "Gurugram police arrest 17 in fake call centre scam targeting US and Canada",
+   "ts": "2026-11-19T16:36:49.629954+00:00",
+   "date": "2026-11-19",
+   "category": "WORLD",
+   "counted": false
   }
  ],
  "evergreen_index": 0,
