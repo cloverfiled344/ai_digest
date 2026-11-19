@@ -382,3 +382,76 @@ def test_run_fails_loudly_when_ai_errors(cfg, fake_net, monkeypatch):
     with pytest.raises(SystemExit) as exc:
         bot.main([])
     assert "ИИ не ответил" in str(exc.value)
+
+
+def test_send_post_falls_back_to_saved_chat(cfg, monkeypatch):
+    """Секрет указывает на старый @адрес канала — бот шлёт в запомненный chat_id и запоминает его."""
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:abc")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "@old_name")
+    sent = []
+
+    def fake_post(url, json=None, timeout=0):
+        sent.append(json["chat_id"])
+        if json["chat_id"] == "@old_name":
+            return FakeResp(status=400, json_data={"ok": False, "description": "Bad Request: chat not found"})
+        return FakeResp(json_data={"ok": True, "result": {"message_id": 9, "chat": {"id": -100555}}})
+
+    monkeypatch.setattr(bot.requests, "post", fake_post)
+    state = {"chat_id": -100555}
+    assert bot.send_post("<b>Тест</b>", state=state)
+    assert sent == ["@old_name", "-100555"] and state["chat_id"] == -100555
+
+
+def test_send_post_discovers_single_channel(cfg, monkeypatch):
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:abc")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "@old_name")
+
+    def fake_post(url, json=None, timeout=0):
+        if url.endswith("/getUpdates"):
+            return FakeResp(json_data={"ok": True, "result": [
+                {"channel_post": {"chat": {"id": -100777, "type": "channel", "title": "Канал"}}}]})
+        if json["chat_id"] == "-100777":
+            return FakeResp(json_data={"ok": True, "result": {"message_id": 1, "chat": {"id": -100777}}})
+        return FakeResp(status=400, json_data={"ok": False, "description": "Bad Request: chat not found"})
+
+    monkeypatch.setattr(bot.requests, "post", fake_post)
+    state = {}
+    assert bot.send_post("Тест", state=state) and state["chat_id"] == -100777
+
+
+def test_due_count_and_slots(cfg):
+    tz = bot.local_tz()
+    at = lambda h, m=0: datetime(2026, 11, 19, h, m, tzinfo=tz)  # noqa: E731
+    assert bot.due_count(cfg, at(7, 59)) == 0
+    assert bot.due_count(cfg, at(8, 5)) == 1
+    assert bot.due_count(cfg, at(16, 30)) == 9
+    assert bot.due_count(cfg, at(22, 50)) == 15
+    assert bot.seconds_to_next_slot(cfg, at(9, 0)) == 17 * 60
+    assert bot.seconds_to_next_slot(cfg, at(9, 30)) == 47 * 60
+
+
+def test_loop_catches_up(cfg, fake_net, monkeypatch):
+    """Запуск в 12:00 с нулём постов: публикует подряд с паузой 12 мин, пока не догонит план."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:abc")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "@chan")
+    monkeypatch.setenv("LOOP_MINUTES", "120")
+    monkeypatch.setattr(bot, "call_anthropic", fake_llm)
+    bot.CONFIG = cfg
+    clock = {"t": datetime(2026, 11, 19, 12, 0, tzinfo=bot.local_tz())}
+    monkeypatch.setattr(bot, "local_now", lambda: clock["t"])
+    real = {"t": 0.0}
+    monkeypatch.setattr(bot.time, "time", lambda: real["t"])
+
+    def fake_sleep(sec):
+        real["t"] += sec
+        clock["t"] += timedelta(seconds=sec)
+
+    monkeypatch.setattr(bot.time, "sleep", fake_sleep)
+    sent = []
+    monkeypatch.setattr(bot, "send_post", lambda text, preview=None, silent=False, state=None: sent.append(clock["t"]) or True)
+    bot.loop(dry=False)
+    # к 12:00 положено 5 постов, к 13:00 — 6; за 2 часа бот догоняет план, но не флудит
+    assert 5 <= len(sent) <= 8
+    gaps = [(b - a).total_seconds() / 60 for a, b in zip(sent, sent[1:])]
+    assert all(g >= 12 for g in gaps)

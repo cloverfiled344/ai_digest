@@ -10,6 +10,8 @@
 
 Запуск:
   python bot.py                 — опубликовать следующий пост дня
+  python bot.py --loop          — работать несколько часов подряд: пост каждый час по плану,
+                                  а если посты отстали от плана — догнать (так работает расписание)
   python bot.py --find-chat     — показать chat_id чатов, где есть бот
   python bot.py --test-message  — отправить тестовое сообщение в канал
 
@@ -31,6 +33,7 @@ import html
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 from collections import Counter
@@ -847,15 +850,40 @@ def tg_call(method, payload=None, token=None):
     return r.status_code, data
 
 
-def send_post(text, preview_url=None, silent=False):
-    chat_id = env("TELEGRAM_CHAT_ID")
+# ошибки, после которых имеет смысл попробовать другой chat_id
+CHAT_ERRORS = ("chat not found", "not a member", "kicked", "not enough rights", "need administrator rights",
+               "chat_write_forbidden", "chat_admin_required")
+
+
+def chat_candidates(state=None):
+    """Куда слать: секрет TELEGRAM_CHAT_ID, потом chat_id, с которым последний раз всё получилось."""
+    ids = [env("TELEGRAM_CHAT_ID"), str((state or {}).get("chat_id") or "")]
+    return list(dict.fromkeys(i for i in ids if i))
+
+
+def discover_channels():
+    """Каналы, где бот админ (по свежим обновлениям). Берём, только если такой канал один — чтобы не ошибиться."""
+    try:
+        _, data = tg_call("getUpdates", {"allowed_updates": ["channel_post", "my_chat_member"]})
+    except SystemExit:
+        return []
+    found = {}
+    for upd in data.get("result", []) if data.get("ok") else []:
+        for key in ("channel_post", "my_chat_member", "edited_channel_post"):
+            chat = (upd.get(key) or {}).get("chat") or {}
+            if chat.get("type") == "channel":
+                found[str(chat["id"])] = chat
+    return list(found) if len(found) == 1 else []
+
+
+def _send(chat_id, text, preview_url, silent):
     preview = {"url": preview_url, "prefer_small_media": True} if preview_url else {"is_disabled": True}
     payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML",
                "link_preview_options": preview, "disable_notification": silent}
     status, data = tg_call("sendMessage", payload)
     if data.get("ok"):
         log(f"✅ Опубликовано (message_id={data['result']['message_id']}{', без звука' if silent else ''})")
-        return True
+        return data
     desc = data.get("description", "")
     log(f"Telegram ответил ошибкой {status}: {desc}")
     if "parse" in desc.lower() or "entit" in desc.lower():
@@ -865,7 +893,35 @@ def send_post(text, preview_url=None, silent=False):
                                                "link_preview_options": {"is_disabled": True}})
         if data.get("ok"):
             log("✅ Опубликовано без форматирования")
+    return data
+
+
+def send_post(text, preview_url=None, silent=False, state=None):
+    """Отправляет пост. Если канал из секрета не находится (сменили @адрес и т. п.) — пробует
+    запомненный chat_id, а потом единственный канал, где бот админ."""
+    candidates, discovered, i, data = chat_candidates(state), False, 0, {}
+    while True:
+        if i >= len(candidates):
+            if discovered:
+                break
+            discovered = True
+            candidates += [c for c in discover_channels() if c not in candidates]
+            if i >= len(candidates):
+                break
+        chat_id = candidates[i]
+        i += 1
+        data = _send(chat_id, text, preview_url, silent)
+        if data.get("ok"):
+            real_id = (data.get("result", {}).get("chat") or {}).get("id") or chat_id
+            if state is not None:
+                state["chat_id"] = real_id
+            if chat_id != env("TELEGRAM_CHAT_ID"):
+                log(f"⚠️ Канал из секрета ANTISCAM_CHAT_ID не найден, отправил в {real_id}. "
+                    f"Поставь в секрет это число, чтобы не зависеть от запасного варианта.")
             return True
+        if not any(e in (data.get("description") or "").lower() for e in CHAT_ERRORS):
+            break
+        log(f"Чат {chat_id} недоступен — пробую другой")
     raise SystemExit(f"Не удалось отправить пост: {data.get('description')}")
 
 
@@ -906,6 +962,126 @@ def is_silent(category):
     return hour >= start or hour < end if start > end else start <= hour < end
 
 
+def post_one(state, dry):
+    """Один пост по плану. True — опубликовано."""
+    result = run_once(CONFIG, state)
+    if not result:
+        if LLM_ERRORS:
+            raise SystemExit("ИИ не ответил, пост не опубликован. Последняя ошибка: " + LLM_ERRORS[-1])
+        log("Публиковать нечего — пропускаю этот запуск.")
+        return False
+
+    text, preview, used, meta, category = result
+    log("\n──────── пост ────────\n" + text + "\n──────────────────────")
+    if dry:
+        log("Тестовый режим: пост не отправлен, список опубликованного не изменён.")
+        return False
+    send_post(text, preview, silent=is_silent(category), state=state)
+    mark_posted(state, used, category, meta)
+    save_state(state)
+    return True
+
+
+# ───────────────────────── режим --loop ─────────────────────────
+# Расписание GitHub ненадёжно: из 15 часовых запусков в день может сработать 2–3.
+# Поэтому каждый запуск работает несколько часов: публикует пост каждый час, а если
+# постов меньше, чем положено к этому часу, догоняет план с паузой catchup_gap_minutes.
+
+def due_count(cfg, now=None):
+    """Сколько постов должно выйти к этому моменту: по одному в час с day_start_hour."""
+    now = now or local_now()
+    start = cfg.get("day_start_hour", 8)
+    if now.hour < start:
+        return 0
+    return min(cfg.get("daily_limit", 15), now.hour - start + 1)
+
+
+def seconds_to_next_slot(cfg, now=None):
+    now = now or local_now()
+    slot = now.replace(minute=cfg.get("post_minute", 17), second=0, microsecond=0)
+    if slot <= now:
+        slot += timedelta(hours=1)
+    return max(60, int((slot - now).total_seconds()))
+
+
+def git(*args):
+    return subprocess.run(["git", *args], capture_output=True, text=True)
+
+
+def git_refresh():
+    """Подтянуть свежую память бота (её могли обновить другие запуски)."""
+    if env_flag("GIT_PERSIST"):
+        r = git("pull", "--rebase", "--autostash", "-q")
+        if r.returncode:
+            log(f"git pull не удался: {r.stderr.strip()[:200]}")
+
+
+def git_persist():
+    """Сохранить память в репозиторий сразу после поста, а не в конце многочасового запуска."""
+    if not env_flag("GIT_PERSIST"):
+        return
+    git("add", STATE_PATH)
+    if git("diff", "--cached", "--quiet").returncode == 0:
+        return
+    git("commit", "-q", "-m", "antiscam: update memory")
+    for _ in range(3):
+        if git("pull", "--rebase", "--autostash", "-q").returncode == 0 and git("push", "-q").returncode == 0:
+            return
+        time.sleep(5)
+    log("⚠️ Не удалось сохранить память в репозиторий")
+
+
+def loop(dry):
+    cfg = CONFIG
+    deadline = time.time() + int(env("LOOP_MINUTES", "330")) * 60
+    end_hour = cfg.get("day_end_hour", 23)
+    gap = cfg.get("catchup_gap_minutes", 12) * 60
+    limit = cfg.get("daily_limit", 15)
+    published, errors = 0, []
+    while True:
+        now = local_now()
+        if now.hour >= end_hour:
+            log(f"Уже {now:%H:%M} — на сегодня всё.")
+            break
+        git_refresh()
+        state = load_state()
+        posted, due = sum(today_stats(state).values()), due_count(cfg, now)
+        log(f"[{now:%H:%M}] опубликовано {posted}, по плану к этому часу {due}")
+        if posted >= limit:
+            log("Дневной лимит выполнен.")
+            break
+        wait = seconds_to_next_slot(cfg, now)
+        if posted < due:
+            LLM_ERRORS.clear()
+            try:
+                ok = post_one(state, dry)
+            except SystemExit as ex:
+                ok = False
+                errors.append(str(ex))
+                log(f"Ошибка: {ex}")
+            except Exception as ex:  # один сбой не должен останавливать весь день
+                ok = False
+                errors.append(f"{type(ex).__name__}: {ex}")
+                log(f"Ошибка: {type(ex).__name__}: {ex}")
+            if ok:
+                published += 1
+                git_persist()
+                if posted + 1 < due:
+                    wait = gap  # отстаём от плана — догоняем
+            else:
+                wait = min(wait, 30 * 60) if errors else wait
+        if dry:
+            break
+        if time.time() + wait > deadline:
+            log("Время запуска вышло — дальше продолжит следующий запуск.")
+            break
+        log(f"Следующая проверка через {wait // 60} мин")
+        time.sleep(wait)
+    log(f"Итого за запуск: {published} пост(ов)")
+    if errors and not published:
+        raise SystemExit("Ни одного поста, последняя ошибка: " + errors[-1])
+
+
 def main(argv):
     global CONFIG
     CONFIG = load_config()
@@ -918,22 +1094,9 @@ def main(argv):
     log(f"Запуск {local_now():%d.%m.%Y %H:%M}{' (тестовый режим — без отправки)' if dry else ''}")
     log(f"ИИ: {'Claude' if env('ANTHROPIC_API_KEY') else 'Gemini' if env('GEMINI_API_KEY') else 'нет ключа'}")
 
-    state = load_state()
-    result = run_once(CONFIG, state)
-    if not result:
-        if LLM_ERRORS:
-            raise SystemExit("ИИ не ответил, пост не опубликован. Последняя ошибка: " + LLM_ERRORS[-1])
-        log("Публиковать нечего — пропускаю этот запуск.")
-        return
-
-    text, preview, used, meta, category = result
-    log("\n──────── пост ────────\n" + text + "\n──────────────────────")
-    if dry:
-        log("Тестовый режим: пост не отправлен, список опубликованного не изменён.")
-        return
-    send_post(text, preview, silent=is_silent(category))
-    mark_posted(state, used, category, meta)
-    save_state(state)
+    if "--loop" in argv:
+        return loop(dry)
+    post_one(load_state(), dry)
 
 
 if __name__ == "__main__":
