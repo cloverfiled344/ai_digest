@@ -485,6 +485,24 @@
    "date": "2026-11-19",
    "category": "CIS",
    "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMi0wFBVV95cUxQMWZrTHVFZ2lwMEp1X25kY01kS2hLaU5Sa1AzaTZEZG5pbVh4M29WSHhORWMzZUFlVEpleDhvNmY0QlBhVUhkd2pzSGx1bFhkalFTQ1d1bHFzaVU4ZnBBajRfWGFqTkl2QXQ4dGYwZk42c2wyc1hTQ3dYRHR1ajZ5RDMtUFVjcVhBcGhLcGV5N1pwZ1c2UG1wWXp1UUVfWnY5ZXBJN01WeExiRjhoYWNuNk9nSkwwamtZYkxZNE5IZTM1VHJYMWZrTGtkdEhVRmtKVDFZ?oc=5",
+   "title": "Alerta por una nueva estafa en WhatsApp que pide Bizum urgentes",
+   "ts": "2026-11-19T15:57:54.919169+00:00",
+   "date": "2026-11-19",
+   "category": "WORLD",
+   "counted": true,
+   "scheme": "other",
+   "country": "Испания"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMixwFBVV95cUxNdEVNU1BKalBtQ0E2RXg5OHdBb29xdHl6ME5OanJJTWNaTDZmVkhNSU4ydjlBYmxZakx4MWs0Sm1JLUU3TjY5SnJOaHd1a0NFcGNpX2tabU14NXRBcHZ4cHNmSEdpZ2dvQ1poekFFSVRJNEZ1NTVudUJJbGczc19oTG1DdFpnWjdUbEZQbnJCRGhOSDgwUjB2Z2xGSlVITXpDdHRDRmNNWGlKY2ljUmUxejlRYURZRjZTZWFfbk8xTnY0NVI3Vk5z?oc=5",
+   "title": "Alerta por una nueva estafa en WhatsApp que pide Bizum urgentes",
+   "ts": "2026-11-19T15:57:54.919169+00:00",
+   "date": "2026-11-19",
+   "category": "WORLD",
+   "counted": false
   }
  ],
  "evergreen_index": 0,
