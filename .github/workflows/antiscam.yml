@@ -2,11 +2,12 @@ name: Antiscam posts
 
 on:
   schedule:
-    # Время в UTC, Бишкек = UTC+6. Каждый час с 8:17 до 22:17 — 15 запусков, по посту за запуск (daily_limit: 15).
-    # Плюс 2 запасных в 21:47 и 22:47: если GitHub пропустит запуск днём, пост доберётся вечером.
-    # Бесплатное расписание GitHub опаздывает. Если запуск съедет на ночь, пост уйдёт без звука (quiet_hours в antiscam/config.yaml).
-    - cron: "17 2-16 * * *"
-    - cron: "47 15,16 * * *"
+    # Время в UTC, Бишкек = UTC+6. Расписание GitHub ненадёжно: часовые запуски он часто пропускает
+    # (из 17 в день срабатывало 2–3). Поэтому каждый запуск работает до 5,5 часа в режиме --loop:
+    # пост каждый час, а если план отстал — догоняет. Хватит, чтобы сработали 2 запуска из 6.
+    # Запуски: 8:05, 11:05, 14:05, 17:05, 20:05 и запасной 22:05 по Бишкеку. После 23:00 бот не публикует.
+    - cron: "5 2,5,8,11,14 * * *"
+    - cron: "5 16 * * *"
   workflow_dispatch:             # кнопка «Run workflow» для ручного запуска
     inputs:
       category:
@@ -18,18 +19,23 @@ on:
         description: "Тест: только показать пост в логе, не отправлять"
         type: boolean
         default: true
+      loop:
+        description: "Работать по плану несколько часов, как плановый запуск (догнать пропущенные посты)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write                # чтобы сохранять память бота (data/antiscam_state.json)
 
 concurrency:
-  group: antiscam
+  # плановые запуски идут по очереди (один работает, следующий ждёт), ручные — отдельно, чтобы не ждать часами
+  group: antiscam-${{ github.event_name }}
   cancel-in-progress: false
 
 jobs:
   post:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 350
     env:
       STATE_PATH: data/antiscam_state.json
     steps:
@@ -53,7 +59,16 @@ jobs:
           ADD_KYRGYZ: ${{ vars.ANTISCAM_ADD_KYRGYZ }}
           CATEGORY: ${{ inputs.category || 'auto' }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
-        run: python antiscam/bot.py
+          GIT_PERSIST: "1"               # сохранять память в репозиторий после каждого поста
+          LOOP_MINUTES: "330"
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.loop }}" = "true" ]; then
+            python antiscam/bot.py --loop
+          else
+            python antiscam/bot.py
+          fi
 
       - name: Сохранить память бота
         run: |
