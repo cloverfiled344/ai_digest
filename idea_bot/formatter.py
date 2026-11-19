@@ -17,6 +17,7 @@ MONTHS = ["января", "февраля", "марта", "апреля", "ма�
 
 STATUS = {"exploded": "🔥 Уже выстрелило", "rising": "🌱 Набирает обороты", "gap": "🪟 Окно возможностей"}
 WHY_LABEL = {"exploded": "Почему залетело", "rising": "Почему может залететь", "gap": "Почему сработает здесь"}
+IT_LEVEL = {"it": "🟦 <b>IT</b>", "near_it": "🟨 <b>ОКОЛО-IT</b>", "non_it": "⬜ НЕ IT"}
 SEGMENT_TITLES = {code: title for code, title, _ in cfg.SEGMENTS}
 
 SOURCE_LABELS = {
@@ -90,6 +91,8 @@ def _pack(blocks: list[str]) -> list[str]:
 
 def format_digest(digest: dict, status: dict[str, int | None]) -> list[str]:
     blocks = [f"💡 <b>Идеи дня · {_today()}</b>"]
+    counts = {k: sum(1 for i in digest["ideas"] if i.get("it_level") == k) for k in IT_LEVEL}
+    blocks[0] += "\n" + " · ".join(f"{IT_LEVEL[k]} {n}" for k, n in counts.items() if n)
     if digest.get("trend_of_day"):
         blocks[0] += f"\n\n<b>Тренд дня.</b> {_e(digest['trend_of_day'])}"
 
@@ -102,7 +105,7 @@ def format_digest(digest: dict, status: dict[str, int | None]) -> list[str]:
             current_segment = idea.get("segment")
             lines += [f"<b>{_e(SEGMENT_TITLES.get(current_segment, ''))}</b>", ""]
         lines += [
-            f"<b>{n}. {_e(idea['title'])}</b>",
+            f"{IT_LEVEL.get(idea.get('it_level'), '💡')} │ <b>{n}. {_e(idea['title'])}</b>",
             f"{STATUS.get(kind, '💡')} · <i>{_e(idea['category'])}</i>",
             "",
             f"<b>Что это:</b> {_e(idea['what'])}",
