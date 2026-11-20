@@ -805,6 +805,24 @@
    "counted": true,
    "scheme": "phishing",
    "country": "Не указано"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiwgFBVV95cUxOVzFaOE1jLUhiWHdadHpETmdLTGNqdnNPU25IdTlrOGxQTHVvYlNPNHlNclJmMEEtRFFaazdGbzBYempXcUN5LUV4T2VLbExNNVpBMS13T0Iwbk9SYkFxS096eWZiZXlTUGstVl9CT3BnNVAwMDd1N1JVdVZ3cEtva0xESnFMMWsyTy1RWWxSdllFa2tQVWpvVDdVVTQyMFZvZWpZYW1OZkIzbUFPY1BqUmU5QzctWW1FU1JaeVpKeG5QUQ?oc=5",
+   "title": "Fedemunicipios alerta por mensajes fraudulentos que suplantan al SIMIT para estafar a ciudadanos",
+   "ts": "2026-11-20T10:48:17.627142+00:00",
+   "date": "2026-11-20",
+   "category": "WORLD",
+   "counted": true,
+   "scheme": "phishing",
+   "country": "Колумбия"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxOMy0xWTFtWldkYkRSenZSM2l0bW1fd3Z2TzFycFhWbFBncXhhSUNJUlVzSkZMU0JnUnZVNUg3MTdrTVNOVGRlUW94bS1YYjVRSXdSeDhMR29GTUNESGExaWE3dmVJYVdpUVgtQXplWEt5NWRYVWpyMzV0dkVDMll5VzIwcFVkWEVaQ0VzcDlKS0ZqR2xaVTk1TndCVVBsTXRWYnMybG5lZWlKOEpUNldDOFNNTTQ5bURV?oc=5",
+   "title": "La Polizia arresta un uomo per la truffa del falso carabiniere ad Avellino",
+   "ts": "2026-11-20T10:48:17.627142+00:00",
+   "date": "2026-11-20",
+   "category": "WORLD",
+   "counted": false
   }
  ],
  "evergreen_index": 0,
