@@ -719,6 +719,24 @@
    "date": "2026-11-20",
    "category": "WORLD",
    "counted": false
+  },
+  {
+   "url": "https://www.spot.uz/ru/2026/11/20/fake-traders/",
+   "title": "В Ташкенте мошенники похитили почти 1 млрд сумов под видом трейдинга",
+   "ts": "2026-11-20T10:10:05.135165+00:00",
+   "date": "2026-11-20",
+   "category": "CIS",
+   "counted": true,
+   "scheme": "investment",
+   "country": "Узбекистан"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiW0FVX3lxTE8wbndzbUdYNGdtNTM2VkgzNDBEajd5V0VBdVZlSUFURTRTT0FkdklZYjJpSXJiUk9tbmJpMjdBSGpJbFRwQjV3MzFOd3lxVnl6Q1dpdjZsbnRzZVE?oc=5",
+   "title": "В Ташкенте мошенники похитили почти 1 млрд сумов под видом трейдинга",
+   "ts": "2026-11-20T10:10:05.135165+00:00",
+   "date": "2026-11-20",
+   "category": "CIS",
+   "counted": false
   }
  ],
  "evergreen_index": 0,
