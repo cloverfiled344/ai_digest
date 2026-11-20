@@ -823,6 +823,32 @@
    "date": "2026-11-20",
    "category": "WORLD",
    "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiUEFVX3lxTE1BQ2s4Y0Q5VHpGbnZqMXlPOFhfY0JGWWUyVVZFX1FKS0NaZWJLSlB3NmRXc19HZ2Y0UXBNWHlxZ2IyUWZOTkU0eEtrQXFfTTdL0gFQQVVfeXFMTUFDazhjRDlUekZudmoxeU84WF9jQkZZZTJVVkVfUUpLQ1plYktKUHc2ZFdzX0dnZjRRcE1YeXFnYjJRZk5ORTR4S2tBcV9NN0s?oc=5",
+   "title": "Потерпевшие по делу о мошенничестве на 356 млн сомов под предлогом поставок дизтоплива обратились к Садыру Жап",
+   "ts": "2026-11-20T11:01:27.880677+00:00",
+   "date": "2026-11-20",
+   "category": "CIS",
+   "counted": true,
+   "scheme": "prepayment",
+   "country": "Кыргызстан"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiUEFVX3lxTE1BQ2s4Y0Q5VHpGbnZqMXlPOFhfY0JGWWUyVVZFX1FKS0NaZWJLSlB3NmRXc19HZ2Y0UXBNWHlxZ2IyUWZOTkU0eEtrQXFfTTdL0gFQQVVfeXFMTUFDazhjRDlUekZudmoxeU84WF9jQkZZZTJVVkVfUUpLQ1plYktKUHc2ZFdzX0dnZjRRcE1YeXFnYjJRZk5ORTR4S2tBcV9NN0s?oc=5",
+   "title": "Потерпевшие по делу о мошенничестве на 356 млн сомов под предлогом поставок дизтоплива обратились к Садыру Жап",
+   "ts": "2026-11-20T11:01:27.880677+00:00",
+   "date": "2026-11-20",
+   "category": "CIS",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMikwFBVV95cUxOT2ZySkE5TldNeUU4Z01CVHBrOXN4SEZaazNLR0ptWmxHNU1hckhrdmM2cWRGSzYyaF9mNmNJd3pPNGJwQ245T0xVc25oQVl5ckRwakZ4ZmZwSmZ5OXZrdzhrNFZnYkxpYnBLY19wRkdCV01oVTFIbV9FbFhwbl9qZDFxZFBWUmRBYzc2QmhrOFpldTDSAZgBQVVfeXFMTlVzc2pWaHV4elRocU9WVDd5Zlo3SkZWbXVMMTB5SmxsZURPVzhydkFTZWFQVkg1aWhPY19NRi1IZGNweTZjMmJTTlR3aWVtUjNHT25DZW5iZXRCek9sZUFaUG5xR0s4WExVdFFNR1BrYm1vQTFCSEp4aGNSakEtZUF2NUZ0Y05DNy1QTVFUZkpIMUktODE2V0E?oc=5",
+   "title": "Две пенсионерки отдали мошенникам 23,5 млн тенге в Костанае",
+   "ts": "2026-11-20T11:01:27.880677+00:00",
+   "date": "2026-11-20",
+   "category": "CIS",
+   "counted": false
   }
  ],
  "evergreen_index": 0,
