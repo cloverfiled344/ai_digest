@@ -795,6 +795,16 @@
    "date": "2026-11-20",
    "category": "WORLD",
    "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMi7gFBVV95cUxNZmZFeVNVbnM2a0l0X1lIdDRSZV9LN0hQSkRNdTR1MnQ1STJtYzFWMGs4TWpDamVhM2FKVXNEZ1UyR3JKYnRXX3FER2lHd2hudnF2ZFUwTE1vRUFnNDh6b1VnQmxtcFBBeEdVaG14NlZ0YTZSeXhUeXFDLVZuSEUwVEJ4OWtSTzlwaVlndHVqRy1HcjVpOU9hSDFpTjdrXzhxdEdLWktqejUteS1ubGNYa3ZoWElzYnpRTmhlMVhBNTMteDdndTFwcks4RGlCYkYzaTdHOGVJZUExZEhEZXFsTkZ6QUhWODdxYnoxZmRR?oc=5",
+   "title": "Поддельные сайты Datamed и приглашения на Facebook. Мошенники выманили у жителей почти 11,5 млн евро",
+   "ts": "2026-11-20T10:35:37.516048+00:00",
+   "date": "2026-11-20",
+   "category": "WORLD",
+   "counted": true,
+   "scheme": "phishing",
+   "country": "Не указано"
   }
  ],
  "evergreen_index": 0,
