@@ -647,6 +647,16 @@
    "date": "2026-11-19",
    "category": "CIS",
    "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMirwFBVV95cUxNb241Q01LdTV5Qm81aUhobDdiRlVuWnNwaVRBUktHSkEweVlPY3RZTWxGbzVOak56RXRHUjJEMHhEZFF4ODhSZXFtMTNyN0dKaUtSMjA1U1RxTDBzcDNzcktRSTk2NnlLcFV0bS1pOHBBLWgzX0NRdGNqeXNrbFVyUm9iR2F1OEhObVlHQUJjLTNNNFpOQU9odnJOM0ZhdHpJUkY3ajVpT0tTMC03VXNN?oc=5",
+   "title": "В Актобе мошенники выманили у студентки 10 млн тенге под предлогом защиты денег",
+   "ts": "2026-11-20T02:17:41.818848+00:00",
+   "date": "2026-11-20",
+   "category": "CIS",
+   "counted": true,
+   "scheme": "bank_call",
+   "country": "Казахстан"
   }
  ],
  "evergreen_index": 0,
