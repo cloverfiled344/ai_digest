@@ -903,6 +903,16 @@
    "date": "2026-11-20",
    "category": "WORLD",
    "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxQWUd1c08tQUV2OF81MUszeEhKSzljZm9XWkpsSGZoalhBUmUtcTFmeTlEeTJ6N1d3cjJkbnJlTWM2VGd1Q09LTDdfeFNuNnFGREVGeGFWcnc2OGpLMWdLU2MxRlVkTXNmTXlSTlByc2h2ZHM3ZGx1eFUyU1JQQXlGOERTY1AxWkVVSzgtZ1RHd0N3cWdhRFM3ZlVVT3R0d01rdk1UZ05wTnd4eWhlZ0RXTElNR1BKbTZq?oc=5",
+   "title": "Six Chinese nationals arrested in Phnom Penh over military impersonation scam",
+   "ts": "2026-11-20T15:18:50.032578+00:00",
+   "date": "2026-11-20",
+   "category": "WORLD",
+   "counted": true,
+   "scheme": "bank_call",
+   "country": "Камбоджа"
   }
  ],
  "evergreen_index": 1,
