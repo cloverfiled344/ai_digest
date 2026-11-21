@@ -949,6 +949,16 @@
    "counted": true,
    "scheme": "other",
    "country": "Сингапур"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiowFBVV95cUxNRkpxQUQwUFUwTUNsM0ltZms1NzRFN1NrWjVSYWNCN3lPX1RacTVtT2pJMEJoblo4T3FDemU0bm5hWE9uRnhYYWVfZ1MtSEM4X3hhb1AtS3FDejZwSERINlpFeWZNb1RLcXpnSUtrb18xZWx1a3BDdGE3V3IxRzViZmVpTGJLZjdQMndZdFhRdXZTTF9KNGtmcHdGRXQ4Y3pZdk5N0gGoAUFVX3lxTFBuaHB2X0kzMWpWLXVlcXBOMGxHNGM3czZ6MjVzVk0zcHdHRy1SNG90aWpDQlozcFVMdVdEbzBkUzNtWkZTWWowQUN0Z09ObXhjc21UYUV1U29sdmRQRnR1ZDhpNjVQS2xrRTZrMlhoRUd0T1RBVmo5dVFHUUVvZ0hrVnJkbVM1OGllQmk5aEE0N3AwOUNpZEhHR1dVaFUxSTVtYUpNVm1uUg?oc=5",
+   "title": "Мошенники превратили бывший сайт Госдепа США в фейковый сервис сертификации онлайн-казино",
+   "ts": "2026-11-21T04:18:56.196274+00:00",
+   "date": "2026-11-21",
+   "category": "WORLD",
+   "counted": true,
+   "scheme": "phishing",
+   "country": "США"
   }
  ],
  "evergreen_index": 1,
