@@ -959,8 +959,21 @@
    "counted": true,
    "scheme": "phishing",
    "country": "США"
+  },
+  {
+   "url": "manual:001-eto-ty-na-video.yaml",
+   "title": "«Это ты на видео?» — сообщение, после которого крадут аккаунт и деньги",
+   "ts": "2026-11-21T05:09:46.874129+00:00",
+   "date": "2026-11-21",
+   "category": "MANUAL",
+   "counted": true,
+   "scheme": "hacking",
+   "country": "Telegram"
   }
  ],
  "evergreen_index": 1,
- "chat_id": -1004322457915
+ "chat_id": -1004322457915,
+ "manual_done": [
+  "001-eto-ty-na-video.yaml"
+ ]
 }
