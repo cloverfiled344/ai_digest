@@ -979,6 +979,72 @@
    "counted": true,
    "scheme": "bank_call",
    "country": "Монако"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMi1wFBVV95cUxORVNEZGlqaVppUzdsSXBjWUF5bFplaTU0Vi1yQ005X2h4S194QjdvczdPY3M1ZEpnSVVzMVJOTm9FXzlMamhkREpaR2dxbHRGZE54RjRmWWVQTkk3UWZ3ZEUwcW9mU0dONm9nZkotd0pwWk5mWUYwOWl2STBqd1lNOFV1OVNJcjBTcnREZnVTRXlmV3RtRFhwOU8zbURidlpGTXBQQ1dXX3NydDJhZUR6UzFyMFBhUThSOVlaUEIwZVBBMG9JTGJYVVl6U1haeGstYzg3YzNXNA?oc=5",
+   "title": "В Нукусе группа мошенников похитила почти миллиард сумов с банковских карт через APK-файлы. Видео",
+   "ts": "2026-11-21T15:18:45.002486+00:00",
+   "date": "2026-11-21",
+   "category": "CIS",
+   "counted": true,
+   "scheme": "phishing",
+   "country": "Узбекистан"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiUkFVX3lxTE1LUEVFWWdXSHdLTFkwdHJkQk42TjQxWXBtbEhybTVzZkxXLVl6UlFpVHhFUHgyb1RDbEpvcUI2Y2Y3c28wTEtDeGQzSzZmU2FkQ1E?oc=5",
+   "title": "Граждан Европы обманывали из подпольного колл-центра в Ташкенте",
+   "ts": "2026-11-21T15:18:45.002486+00:00",
+   "date": "2026-11-21",
+   "category": "CIS",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiV0FVX3lxTFBOaHViNUhiLWtzNnpVejRNTlBWanFMMWNqV2JVM0Y0dVlDenFZTFhZN09nWWJDUW8wQzRFZF9LeEFFQjVmUzBPRFlVOXZSVGNURW9FQ3RMWQ?oc=5",
+   "title": "В Ташкенте накрыли колл-центр, обманывавший иностранцев",
+   "ts": "2026-11-21T15:18:45.002486+00:00",
+   "date": "2026-11-21",
+   "category": "CIS",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMicEFVX3lxTE01eVVaUVJUdEc1X1VMXzNRRlk2cnd4R3VzZ0JzYmxLdDVQTUFTNm9MREhVenRreWhSU0FRS0tmLTZLNS1oQ2RmTmtKTU5WTVBjR0hiSUFrRXV5bFQteVRMVUxtZnNXLUpTbmc5N0U2RnQ?oc=5",
+   "title": "Экс-советника вице-премьера Назиру Усеналиеву арестовали по делу о мошенничестве в особо крупном размере",
+   "ts": "2026-11-21T15:18:45.002486+00:00",
+   "date": "2026-11-21",
+   "category": "CIS",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxPeEpLRnhWYmUxcXI3STNLZ19UM3BURUNiLUQ3dWxoOW9IQ3RKTThzdnIxYnZaTmd2MVd2cS1YRVM1N1paTWhEUHVyZTN4NkhiNlprRmlwZ0JkNjItRl9VczBpTWRCV2JYMk96VTI2aXM0R3duZ2RZTjlYYU1fYkxfWkpxRjJ2cFZaRlhTSk9SQUhXU2N5Wm41MU5heFo2b1g1eGxENnVfdzBFV0hOMzVYaTFrTkcySUYx?oc=5",
+   "title": "В Москве задержали курьера мошенников, получившего от потерпевшей 1,2 млн рублей",
+   "ts": "2026-11-21T15:18:45.002486+00:00",
+   "date": "2026-11-21",
+   "category": "CIS",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiuwFBVV95cUxOWW11Y0dXYnp1ejRpamFyV0I5Q2NJSXYxVFNDQlVJMTRYbmdrWS1sUWxlMk1VUEF2Y1BJZzRha29OTGsxNFNJZFhZbS02U1drR3UxN3NzZURlM0hLak5qNktERXdhbC1SMktRa3VJMndaNXRHbEozWUxnTjU5OEpNQUhlcjBhR0dQRnQyS1IwLUhWMXJqcU1uUWN2LW9vTHpqSHMyRUxWM1VoNXNpRHBmU3NqbHhMcG9HLWRF?oc=5",
+   "title": "Мошенники в Беларуси. За 20 ноября 2026 года в милицию поступило свыше 300 сообщений",
+   "ts": "2026-11-21T15:18:45.002486+00:00",
+   "date": "2026-11-21",
+   "category": "CIS",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMitgFBVV95cUxOVVJkTXI1Y1FTa0hFYmQxSDFCUlNJeXd3S1Zzd1hTeE9lOGQwREtFT3NsOGo0dXRVWERTZEJTQnd5OGt2N1VjV081ckR6X1hDUmN3azRXbHJGMHRkbGVyUjZqVndnOGR4ZUppV0xhZVQzYWxGSFAzWU1INFRCS0ljYkJvNzZ5QWNSY1Q5b1E5Q2lEcTJrb21xUWZESGJPUnF6T01WUlZVaVdkUDd3dHhvdVZkU1BuZw?oc=5",
+   "title": "В Беларуси за сутки заблокированы платежи по 182 реквизитам мошенников",
+   "ts": "2026-11-21T15:18:45.002486+00:00",
+   "date": "2026-11-21",
+   "category": "CIS",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMingFBVV95cUxQMkN3bldlc0h6THl0UW5XLVd6SUI1YS04aFhjdnc5SVV4cEs4MGF4c0xhcUlDeW9fbUNTcjBvMU1aNTBtOFNvVGVZSlNFcjhVNkoxdGpMWnhabUdod2hrUmF6d3V4UzBoR0U5QUlvdDFQbGQzNm5hU1VyMlZJcjB1TWs1UUtTU1V0U0lMUFpiRVc2WXF6enZxRlU3eGo2UdIBpgFBVV95cUxNMW1rckJhcTFDV2tWOVFjdTU0VVF6VU5hUGp0aTlGanFkNDlHTWo2OVhONVoyeE52MmpxSkRaQmlBamRjWjNmemhMT3dUM0g5QlhoWlkwYWVQMzNqdV9vLWloT0lkbkZ6LTRhcFNER0dqWVA1S2hSaFlFcjMwcENFUWhtc2U1VjdnRWpEQmJlV0FqNDJpS0VnbVVFa3NVMjlEMTNhbURB?oc=5",
+   "title": "За сутки заблокированы платежи по 182 реквизитам мошенников — МВД",
+   "ts": "2026-11-21T15:18:45.002486+00:00",
+   "date": "2026-11-21",
+   "category": "CIS",
+   "counted": false
   }
  ],
  "evergreen_index": 1,
