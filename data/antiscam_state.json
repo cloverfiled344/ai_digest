@@ -913,6 +913,32 @@
    "counted": true,
    "scheme": "bank_call",
    "country": "Камбоджа"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMirwFBVV95cUxNVkN0RmdLQ1JYQmN1Nld5R3pTOEpZUXVWVEtodWxidHo0SVFsclRCVDhnX0tLS0ctVG5GMk5vRWhheFRQUnkxLXRjWlFVUGc1TnlPYURxWG52WFlpaGhGbGItekRUMDAtV0hHYkNobzhlNXZ5UUNuN3huUktOSDJrMHlSZ2FTSEVrUGpVeVhNV0E5emJYV1RqUUZLbjRpNFdSX0d5VkNZRTRNbndDTzdJ?oc=5",
+   "title": "Задержали подозреваемого в мошенничестве, выдававшего себя за помощника адвоката",
+   "ts": "2026-11-21T02:17:36.786147+00:00",
+   "date": "2026-11-21",
+   "category": "CIS",
+   "counted": true,
+   "scheme": "other",
+   "country": "Кыргызстан"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMirwFBVV95cUxNVkN0RmdLQ1JYQmN1Nld5R3pTOEpZUXVWVEtodWxidHo0SVFsclRCVDhnX0tLS0ctVG5GMk5vRWhheFRQUnkxLXRjWlFVUGc1TnlPYURxWG52WFlpaGhGbGItekRUMDAtV0hHYkNobzhlNXZ5UUNuN3huUktOSDJrMHlSZ2FTSEVrUGpVeVhNV0E5emJYV1RqUUZLbjRpNFdSX0d5VkNZRTRNbndDTzdJ?oc=5",
+   "title": "Задержали подозреваемого в мошенничестве, выдававшего себя за помощника адвоката",
+   "ts": "2026-11-21T02:17:36.786147+00:00",
+   "date": "2026-11-21",
+   "category": "CIS",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiwwFBVV95cUxOaTlDSHRmMUhvM1RGQnZHakdoaHl6bExHOFFyeVQzWUFPNl9ta1FPVTlNUTRCU2o0R0JNaFpLaERfQUl6NzRVNF9pRmN0VVhhUGxISndKV1BlXzViU2RoYlFISDluNDZjdEtYSlJSYjhMOE0ybFdZSHFuNU5BUzV3NXgyYmJMYnFhUkxjSGoxMTh2emloMUo0N3FXODcxeFVCMnRkUFpyVjVUWkp1Z2lqc1ZqTUlEYzBlZTRZaDYzeU9hXzTSAcgBQVVfeXFMTXFXQ3JZVnZFVU1waDFKQ0tST0tjUVRJRUd6b05TcTBNNEQ5aDVGalF0ZXozVWVDZFJkSzZoSmg1SlBxVU11Y3dOTzdzOUhYSGo4cS1ubnNCNUt0TllueGVjSEs5VlhldmRXN2N4RkdmYW9Ub0JHQ0NVZWxqaUk5Q0hUQzI1UHFiMnEtNkJidVU2NXRxN0V1NnRnWi11MVMtckZnSFhGblU5NmRuNkV3V1phRUw1ei1IMkZEeGcwMTBJdnZsTldTaWo?oc=5",
+   "title": "Более 103 млн тенге ущерба при переоформлении авто: мошенника осудили в Астане",
+   "ts": "2026-11-21T02:17:36.786147+00:00",
+   "date": "2026-11-21",
+   "category": "CIS",
+   "counted": false
   }
  ],
  "evergreen_index": 1,
