@@ -61,6 +61,7 @@ PRIORITY_BOOST = {"KG": 3, "UZ": 1.5, "KZ": 1.5}
 TELEGRAM_LIMIT = 4000  # у Telegram лимит 4096 символов, оставляем запас
 FLAG_RE = re.compile(r"^[\U0001F1E6-\U0001F1FF]{2}$")
 CONFIG = {}
+MANUAL_DIR = os.path.join(ROOT, "manual")  # готовые посты, которые выходят первыми, по порядку имён файлов
 
 
 # ───────────────────────── утилиты ─────────────────────────
@@ -560,7 +561,7 @@ def kyrgyz_instruction():
 
 
 STORY_FIELDS = """"title": "заголовок своими словами до 90 символов",
-"how_it_works": "2–3 предложения: как устроена схема и на что давят мошенники",
+"how_it_works": "3–4 коротких предложения по шагам: что делают мошенники, что пишут или говорят, на какие чувства давят (страх, срочность, жадность, сочувствие)",
 "red_flags": ["3–4 коротких признака, по которым можно распознать такую схему"],
 "what_to_do": ["2–3 конкретных действия для читателя из СНГ: как защититься и что делать, если деньги уже переведены (звонок в банк по номеру на карте, блокировка карты, заявление в полицию/милицию — 102)"],
 "ky": \"\""""
@@ -586,6 +587,11 @@ def llm_pick(cands, category, cfg, mix=(Counter(), Counter())):
     max_c, max_s = cfg.get("max_per_country", 3), cfg.get("max_per_scheme", 3)
     prompt = f"""Сейчас {local_now().strftime('%d.%m.%Y %H:%M')}. Ниже свежие новости на разных языках.
 Выбери до 3 лучших историй о мошенничестве, которые произошли {describe}. Важно, где пострадали люди или где действовали мошенники, а не где вышла новость.
+
+Постов в день мало, поэтому бери только по-настоящему полезные истории. Отбирай по качеству, а не по свежести:
+- лучше всего: новая или необычная схема с понятной механикой (что писали или говорили мошенники, по шагам), официальное предупреждение полиции, банка или регулятора с деталями, история с ясным уроком для обычного человека;
+- пропускай: сухие сводки о задержаниях и приговорах без описания схемы, хищения и коррупцию чиновников и компаний, споры бизнеса, отмены рейсов и банкротства турфирм, новости без деталей о том, как обманывали.
+Если подходящих по качеству нет — лучше верни пустой список.
 
 Канал хочет разнообразия. Сегодня уже опубликовано: {mix_text(cfg, mix)}.
 Не бери историю, если её страна сегодня уже была {max_c} раза или её вид схемы — {max_s} раза. При прочих равных выбирай страны и виды схем, которых сегодня ещё не было.
@@ -674,7 +680,10 @@ def build_story(cfg, data, category, item=None):
     safe = cfg.get("safe_domains", [])
     d = lambda s: esc(defang(s or "", safe))  # noqa: E731
     flag = data.get("flag", "").strip()
-    flag = "💡" if category == "TIP" else flag if FLAG_RE.match(flag) else "🌍"
+    if category == "TIP":
+        flag = "💡"
+    elif not FLAG_RE.match(flag) and not (category == "MANUAL" and flag):
+        flag = "🌍"
     location = data.get("location") or ("Напоминание" if not item else cname(category))
 
     parts = [f"📍 <b>{flag} {d(location)}</b>", f"⚠️ <b>{d(data.get('title'))}</b>"]
@@ -793,6 +802,36 @@ def make_evergreen(cfg, state):
     return build_story(cfg, data, "TIP"), None, [item], {}
 
 
+def next_manual(state):
+    """Первый неопубликованный готовый пост из antiscam/manual/*.yaml: (имя, данные) или None."""
+    done = set(state.get("manual_done", []))
+    try:
+        names = sorted(f for f in os.listdir(MANUAL_DIR) if f.endswith((".yaml", ".yml")))
+    except FileNotFoundError:
+        return None
+    for name in names:
+        if name in done:
+            continue
+        with open(os.path.join(MANUAL_DIR, name), encoding="utf-8") as f:
+            data = yaml.safe_load(f) or {}
+        if data.get("title"):
+            return name, data
+    return None
+
+
+def make_manual(cfg, state):
+    found = next_manual(state)
+    if not found:
+        return None
+    name, data = found
+    log(f"Готовый пост из manual/{name}")
+    item = {"link": data.get("source_url") or f"manual:{name}", "title": data.get("source_title") or data["title"],
+            "manual": name}
+    text = build_story(cfg, data, "MANUAL", item=item if data.get("source_url") else None)
+    meta = {"scheme": scheme_key(cfg, data.get("scheme")), "country": (data.get("country_tag") or "").strip()}
+    return text, None, [item], meta, "MANUAL"
+
+
 def run_once(cfg, state):
     """Публикует следующий пост дня. Возвращает (text, preview, used, meta, category) или None."""
     stats = today_stats(state)
@@ -807,6 +846,10 @@ def run_once(cfg, state):
         return None
 
     forced = env("CATEGORY", "auto").upper()
+    if forced == "AUTO":
+        manual = make_manual(cfg, state)
+        if manual:
+            return manual
     order = [forced] if forced in cfg["categories"] else category_order(cfg, stats)
     log(f"Рубрика по плану: {cname(order[0])}" + (f", запасные: {[cname(c) for c in order[1:]]}" if len(order) > 1 else ""))
 
@@ -978,30 +1021,49 @@ def post_one(state, dry):
         return False
     send_post(text, preview, silent=is_silent(category), state=state)
     mark_posted(state, used, category, meta)
+    for it in used:
+        if it.get("manual"):
+            state.setdefault("manual_done", []).append(it["manual"])
     save_state(state)
     return True
 
 
 # ───────────────────────── режим --loop ─────────────────────────
-# Расписание GitHub ненадёжно: из 15 часовых запусков в день может сработать 2–3.
-# Поэтому каждый запуск работает несколько часов: публикует пост каждый час, а если
-# постов меньше, чем положено к этому часу, догоняет план с паузой catchup_gap_minutes.
+# Расписание GitHub ненадёжно: запуски часто пропускаются. Поэтому каждый запуск работает
+# несколько часов и публикует посты в моменты из day_slots и night_slots (config.yaml).
+# Если слот пропущен, бот догоняет его с паузой catchup_gap_minutes, но только слоты
+# за последние catchup_window_hours: старые пропуски (например, ночные утром) не догоняются.
+
+def _slot_times(cfg, day):
+    tz = local_tz()
+    out = []
+    for hhmm in list(cfg.get("day_slots") or []) + list(cfg.get("night_slots") or []):
+        h, m = (int(x) for x in str(hhmm).split(":"))
+        out.append(datetime(day.year, day.month, day.day, h, m, tzinfo=tz))
+    return sorted(out)
+
 
 def due_count(cfg, now=None):
-    """Сколько постов должно выйти к этому моменту: по одному в час с day_start_hour."""
+    """Сколько постов должно выйти к этому моменту сегодня."""
     now = now or local_now()
-    start = cfg.get("day_start_hour", 8)
-    if now.hour < start:
-        return 0
-    return min(cfg.get("daily_limit", 15), now.hour - start + 1)
+    passed = [t for t in _slot_times(cfg, now) if t <= now]
+    return min(cfg.get("daily_limit", len(passed)), len(passed))
+
+
+def recent_due(cfg, now=None):
+    """Сколько слотов прошло за последние catchup_window_hours — только их имеет смысл догонять."""
+    now = now or local_now()
+    window = timedelta(hours=cfg.get("catchup_window_hours", 3))
+    return sum(1 for t in _slot_times(cfg, now) if now - window < t <= now)
 
 
 def seconds_to_next_slot(cfg, now=None):
     now = now or local_now()
-    slot = now.replace(minute=cfg.get("post_minute", 17), second=0, microsecond=0)
-    if slot <= now:
-        slot += timedelta(hours=1)
-    return max(60, int((slot - now).total_seconds()))
+    future = [t for t in _slot_times(cfg, now) if t > now]
+    if not future:
+        tomorrow = (now + timedelta(days=1)).date()
+        future = _slot_times(cfg, tomorrow)
+    return max(60, int((future[0] - now).total_seconds()))
 
 
 def git(*args):
@@ -1034,24 +1096,18 @@ def git_persist():
 def loop(dry):
     cfg = CONFIG
     deadline = time.time() + int(env("LOOP_MINUTES", "330")) * 60
-    end_hour = cfg.get("day_end_hour", 23)
-    gap = cfg.get("catchup_gap_minutes", 12) * 60
-    limit = cfg.get("daily_limit", 15)
+    gap = cfg.get("catchup_gap_minutes", 40) * 60
+    limit = cfg.get("daily_limit", 7)
     published, errors = 0, []
     while True:
         now = local_now()
-        if now.hour >= end_hour:
-            log(f"Уже {now:%H:%M} — на сегодня всё.")
-            break
         git_refresh()
         state = load_state()
-        posted, due = sum(today_stats(state).values()), due_count(cfg, now)
-        log(f"[{now:%H:%M}] опубликовано {posted}, по плану к этому часу {due}")
-        if posted >= limit:
-            log("Дневной лимит выполнен.")
-            break
+        posted = sum(today_stats(state).values())
+        due = min(due_count(cfg, now), posted + recent_due(cfg, now))  # старые пропуски не догоняем
+        log(f"[{now:%H:%M}] опубликовано сегодня {posted}, по плану сейчас {due} (лимит {limit})")
         wait = seconds_to_next_slot(cfg, now)
-        if posted < due:
+        if posted < min(due, limit):
             LLM_ERRORS.clear()
             try:
                 ok = post_one(state, dry)
@@ -1059,17 +1115,17 @@ def loop(dry):
                 ok = False
                 errors.append(str(ex))
                 log(f"Ошибка: {ex}")
-            except Exception as ex:  # один сбой не должен останавливать весь день
+            except Exception as ex:  # один сбой не должен останавливать весь запуск
                 ok = False
                 errors.append(f"{type(ex).__name__}: {ex}")
                 log(f"Ошибка: {type(ex).__name__}: {ex}")
             if ok:
                 published += 1
                 git_persist()
-                if posted + 1 < due:
+                if posted + 1 < min(due, limit):
                     wait = gap  # отстаём от плана — догоняем
-            else:
-                wait = min(wait, 30 * 60) if errors else wait
+            elif errors:
+                wait = min(wait, 30 * 60)
         if dry:
             break
         if time.time() + wait > deadline:
