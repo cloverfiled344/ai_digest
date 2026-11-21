@@ -969,6 +969,16 @@
    "counted": true,
    "scheme": "hacking",
    "country": "Telegram"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMi2AFBVV95cUxONkxDWDRfV2RCWVZOWENyMzQzZjlJcG5Hb0dzUEhDUWhRVlVveUlHY3NRVzE2R0tqdWRuSkdMZ1J1WjdUdHV1SGxtZTl0d1A3YzhBZEVZUkxCT205R01IWF9sNTdrSXNnQndIbnVBaF9yenA5NG1NVEVmNVZGRFBvZ1dxTGxzb2xUNVcxRVJxYklKNXhLempITzdlWm1tQ0tCaXV0U1dmUjJGWHgtME44VDA4ZVFDczdIV3pKYkw4M25qRDFxcTFhbThBUkJmeHN1b1BpLWNzZUY?oc=5",
+   "title": "Le numéro de la police s'affiche, mais un escroc est au bout du fil : Monaco alerte sur cette arnaque",
+   "ts": "2026-11-21T14:32:35.735342+00:00",
+   "date": "2026-11-21",
+   "category": "WORLD",
+   "counted": true,
+   "scheme": "bank_call",
+   "country": "Монако"
   }
  ],
  "evergreen_index": 1,
