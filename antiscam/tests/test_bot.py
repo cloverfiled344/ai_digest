@@ -94,6 +94,7 @@ def cfg(tmp_path, monkeypatch):
     bot.CONFIG = c
     monkeypatch.setattr(bot, "STATE_PATH", str(tmp_path / "posted.json"))
     monkeypatch.setattr(bot, "LLM_ERRORS", [])
+    monkeypatch.setattr(bot, "MANUAL_DIR", str(tmp_path / "manual"))
     for k in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "ANTHROPIC_API_KEY", "GEMINI_API_KEY",
               "CATEGORY", "DRY_RUN", "BOT_CTA", "ADD_KYRGYZ"):
         monkeypatch.delenv(k, raising=False)
@@ -188,13 +189,13 @@ def test_collect_categories_and_dedup(cfg, fake_net):
 
 
 def test_plan_order(cfg):
-    assert Counter(cfg["plan"]) == Counter({"CIS": 3, "WORLD": 12}) and cfg["daily_limit"] == 15
-    assert bot.category_order(cfg, Counter())[0] == "CIS"
-    assert bot.category_order(cfg, Counter({"CIS": 1}))[0] == "WORLD"
-    assert bot.category_order(cfg, Counter({"CIS": 1, "WORLD": 4}))[0] == "CIS"
-    # СНГ не нашлось утром — слот СНГ остаётся первым в очереди и пробуется снова
-    assert bot.category_order(cfg, Counter({"WORLD": 2})) == ["CIS", "WORLD"]
-    assert bot.category_order(cfg, Counter({"CIS": 3, "WORLD": 12})) == ["CIS", "WORLD"]
+    assert Counter(cfg["plan"]) == Counter({"CIS": 3, "WORLD": 4}) and cfg["daily_limit"] == 7
+    assert bot.category_order(cfg, Counter())[0] == "WORLD"                 # ночью — мир
+    assert bot.category_order(cfg, Counter({"WORLD": 2}))[0] == "CIS"      # первый дневной — СНГ
+    assert bot.category_order(cfg, Counter({"CIS": 1, "WORLD": 2}))[0] == "WORLD"
+    # СНГ не нашлось — слот СНГ остаётся первым в очереди и пробуется снова
+    assert bot.category_order(cfg, Counter({"WORLD": 3})) == ["CIS", "WORLD"]
+    assert bot.category_order(cfg, Counter({"CIS": 3, "WORLD": 4})) == ["CIS", "WORLD"]
 
 
 def test_legacy_usa_counts_as_world(cfg):
@@ -218,7 +219,7 @@ def test_full_day(cfg, fake_net, monkeypatch):
         bot.mark_posted(state, used, category, meta)
 
     cats = [c for c, _, _ in posted]
-    assert cats[0] == "CIS" and "WORLD" in cats and cats.count("TIP") == 1
+    assert cats[0] == "WORLD" and "CIS" in cats and cats.count("TIP") <= 1
     assert len(posted) <= cfg["daily_limit"]
     assert cats.count("CIS") >= 2                                     # минимум 2 СНГ за день
 
@@ -296,7 +297,7 @@ def test_fallback_when_no_cis(cfg, fake_net, monkeypatch):
 
 def test_no_llm_headline(cfg, fake_net):
     text, preview, used, meta, category = bot.run_once(cfg, bot.load_state())
-    assert category == "CIS" and text.startswith("📍 <b>СНГ</b>") and "<a href=" in text
+    assert category == "WORLD" and text.startswith("📍 <b>МИР</b>") and "<a href=" in text
 
 
 def test_state_prevents_repeat(cfg, fake_net):
@@ -336,7 +337,7 @@ def test_quiet_hours(cfg, monkeypatch):
         fixed = datetime(2026, 11, 17, hour, 30, tzinfo=bot.local_tz())
         monkeypatch.setattr(bot, "local_now", lambda: fixed)
     at(12)
-    assert bot.is_silent("CIS") is False and bot.is_silent("WORLD") is True
+    assert bot.is_silent("CIS") is False and bot.is_silent("WORLD") is False  # днём всё со звуком
     at(23)
     assert bot.is_silent("CIS") is True
     at(3)
@@ -422,23 +423,23 @@ def test_send_post_discovers_single_channel(cfg, monkeypatch):
 def test_due_count_and_slots(cfg):
     tz = bot.local_tz()
     at = lambda h, m=0: datetime(2026, 11, 19, h, m, tzinfo=tz)  # noqa: E731
-    assert bot.due_count(cfg, at(7, 59)) == 0
-    assert bot.due_count(cfg, at(8, 5)) == 1
-    assert bot.due_count(cfg, at(16, 30)) == 9
-    assert bot.due_count(cfg, at(22, 50)) == 15
+    assert bot.due_count(cfg, at(0, 10)) == 0
+    assert bot.due_count(cfg, at(7, 0)) == 2       # два ночных
+    assert bot.due_count(cfg, at(16, 0)) == 5
+    assert bot.due_count(cfg, at(23, 0)) == 7
+    assert bot.recent_due(cfg, at(16, 0)) == 1     # за 3 часа прошёл только слот 15:17
     assert bot.seconds_to_next_slot(cfg, at(9, 0)) == 17 * 60
-    assert bot.seconds_to_next_slot(cfg, at(9, 30)) == 47 * 60
+    assert bot.seconds_to_next_slot(cfg, at(22, 0)) == (2 * 60 + 17) * 60  # следующий — 00:17 завтра
 
 
-def test_loop_catches_up(cfg, fake_net, monkeypatch):
-    """Запуск в 12:00 с нулём постов: публикует подряд с паузой 12 мин, пока не догонит план."""
+def _run_loop(cfg, monkeypatch, start, minutes, state=None):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:abc")
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "@chan")
-    monkeypatch.setenv("LOOP_MINUTES", "120")
+    monkeypatch.setenv("LOOP_MINUTES", str(minutes))
     monkeypatch.setattr(bot, "call_anthropic", fake_llm)
     bot.CONFIG = cfg
-    clock = {"t": datetime(2026, 11, 19, 12, 0, tzinfo=bot.local_tz())}
+    clock = {"t": start}
     monkeypatch.setattr(bot, "local_now", lambda: clock["t"])
     real = {"t": 0.0}
     monkeypatch.setattr(bot.time, "time", lambda: real["t"])
@@ -449,9 +450,27 @@ def test_loop_catches_up(cfg, fake_net, monkeypatch):
 
     monkeypatch.setattr(bot.time, "sleep", fake_sleep)
     sent = []
-    monkeypatch.setattr(bot, "send_post", lambda text, preview=None, silent=False, state=None: sent.append(clock["t"]) or True)
+    monkeypatch.setattr(bot, "send_post", lambda text, preview=None, silent=False, state=None:
+                        sent.append((clock["t"], text)) or True)
     bot.loop(dry=False)
-    # к 12:00 положено 5 постов, к 13:00 — 6; за 2 часа бот догоняет план, но не флудит
-    assert 5 <= len(sent) <= 8
-    gaps = [(b - a).total_seconds() / 60 for a, b in zip(sent, sent[1:])]
-    assert all(g >= 12 for g in gaps)
+    return sent
+
+
+def test_loop_posts_on_slots_and_skips_stale(cfg, fake_net, monkeypatch):
+    """Запуск в 13:00, за день ничего не вышло: ночные и 9:17 не догоняются, выходит 12:17, потом 15:17."""
+    tz = bot.local_tz()
+    sent = _run_loop(cfg, monkeypatch, datetime(2026, 11, 19, 13, 0, tzinfo=tz), 300)
+    times = [t.strftime("%H:%M") for t, _ in sent]
+    assert times == ["13:00", "15:17", "18:17"] or times[:2] == ["13:00", "15:17"]
+
+
+def test_manual_post_goes_first_once(cfg, fake_net, monkeypatch, tmp_path):
+    os.makedirs(bot.MANUAL_DIR)
+    with open(os.path.join(bot.MANUAL_DIR, "001.yaml"), "w", encoding="utf-8") as f:
+        f.write('title: "Это ты на видео?"\nlocation: "Telegram"\nscheme: hacking\nhow_it_works: "Шаги"\n'
+                'red_flags: ["Файл .apk"]\nwhat_to_do: ["Не открывать"]\n')
+    tz = bot.local_tz()
+    sent = _run_loop(cfg, monkeypatch, datetime(2026, 11, 19, 9, 20, tzinfo=tz), 200)
+    assert "Это ты на видео?" in sent[0][1] and "#взлом" in sent[0][1]
+    assert sum("Это ты на видео?" in t for _, t in sent) == 1
+    assert bot.load_state()["manual_done"] == ["001.yaml"]

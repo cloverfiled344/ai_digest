@@ -2,12 +2,11 @@ name: Antiscam posts
 
 on:
   schedule:
-    # Время в UTC, Бишкек = UTC+6. Расписание GitHub ненадёжно: часовые запуски он часто пропускает
-    # (из 17 в день срабатывало 2–3). Поэтому каждый запуск работает до 5,5 часа в режиме --loop:
-    # пост каждый час, а если план отстал — догоняет. Хватит, чтобы сработали 2 запуска из 6.
-    # Запуски: 8:05, 11:05, 14:05, 17:05, 20:05 и запасной 22:05 по Бишкеку. После 23:00 бот не публикует.
-    - cron: "5 2,5,8,11,14 * * *"
-    - cron: "5 16 * * *"
+    # Время в UTC, Бишкек = UTC+6. Расписание GitHub ненадёжно и часто пропускает запуски,
+    # поэтому каждый запуск работает до 5,5 часа в режиме --loop и публикует посты в слоты из
+    # antiscam/config.yaml (днём 9:17, 12:17, 15:17, 18:17, 21:17; ночью 0:17 и 6:17 без звука).
+    # Запуски каждые 3 часа — хватит, чтобы сработала половина.
+    - cron: "5 0,3,6,9,12,15,18,21 * * *"
   workflow_dispatch:             # кнопка «Run workflow» для ручного запуска
     inputs:
       category:
@@ -54,7 +53,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}            # общий ключ с дайджестом
           TELEGRAM_BOT_TOKEN: ${{ secrets.ANTISCAM_TELEGRAM_TOKEN }}     # отдельный бот для канала
           TELEGRAM_CHAT_ID: ${{ secrets.ANTISCAM_CHAT_ID }}              # @адрес канала или -100...
-          ANTHROPIC_MODEL: ${{ vars.ANTISCAM_MODEL || 'claude-haiku-5-5' }}
+          ANTHROPIC_MODEL: ${{ vars.ANTISCAM_MODEL || 'claude-sonnet-5-5' }}
           BOT_CTA: ${{ vars.ANTISCAM_CTA }}
           ADD_KYRGYZ: ${{ vars.ANTISCAM_ADD_KYRGYZ }}
           CATEGORY: ${{ inputs.category || 'auto' }}
