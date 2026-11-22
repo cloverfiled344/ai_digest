@@ -1133,6 +1133,48 @@
    "date": "2026-11-22",
    "category": "WORLD",
    "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMimgFBVV95cUxPLVpKNGZsMkJhZXF1V0xhOUdGRzVQa1VNdHUyVE4xSWxTZjRhQUtRV1g1Y0lWbDM0ZTRBTFA4ODkxd3RBOG1pWkdTSUltbW5jeFMxRWtGaDVreTNLZ1pycVJITE1JbDlqTmZyMUpmcm9GWm1aMmsyV0xMb2daaEpDN0ZrNHV0UzMyVWhUQWI1U0c3RjM5aWFndm53?oc=5",
+   "title": "МВД раскрыло новую схему мошенников с сообщением о повреждённой машине",
+   "ts": "2026-11-22T11:04:17.333385+00:00",
+   "date": "2026-11-22",
+   "category": "CIS",
+   "counted": true,
+   "scheme": "other",
+   "country": "Россия"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiwgFBVV95cUxPLTJSZEhmZmNzR3k2TVp0bXpkRDFfaUJmQTZTU19QRU5kbDZmc0lKdDc3TTVuNEdCLXFiNUM3OGk0ZGl6QV9xWkVwSkl6Wk9iOVNaSjV2V19iWXgxdnNMcHZIVnQ1ZDVUeDRaRFo0VEpLTmg0NVZzYTJ2ZU1PM0FfQ2UzaEZoc0RPWG1kRHdRX3RHa19OcjlMYjkyYVJ6S0ZGdnF2b3c5bDVlTXFZN1FKVWEya2tZWHhhTHlpcFlSTEVkUQ?oc=5",
+   "title": "Мошенники придумали новую схему обмана с повреждением припаркованных автомобилей",
+   "ts": "2026-11-22T11:04:17.333385+00:00",
+   "date": "2026-11-22",
+   "category": "CIS",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMif0FVX3lxTFBHSHd2N09CYlNkWG9KT3JXVzh2dnpRRllTVGtDb0xSNDNsdHQyd0dMZWhFUzFrSWxJeV9Cd2NTelFCSEl5djRUR3k5bVVWZm9TblR0aFRFNkZldDRpdmpFX3JFT3pmX1dQR1BUUGpZeVI5SjYxVkpNZE5UY01ONXc?oc=5",
+   "title": "Мошенники придумали новую схему обмана автомобилистов",
+   "ts": "2026-11-22T11:04:17.333385+00:00",
+   "date": "2026-11-22",
+   "category": "CIS",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMizAFBVV95cUxQdmNEQl81cm1HVThLbVZvbUFCM2VZVk1vZFlXUG55S2JCdW9oaVk0WGRodU9JemM4bUxmdXB1bklUVUhyXy1hdmJUVENRME9tQWljQVlJZk5vb3UxcDdCbmoxbGFJYTZhc3JtaFFNQlQ4bVU5WWZtRkJULXZ5ZUpKRndRQUFPbU5kU3JxcHVIR3JMaVg1cFY5RGtHQ3luQTdESndjTi1uVG5Pem1idGt0UGNoLUlIMWF1WGhQWHRQN2ZkVUwyX2NqUzkydjk?oc=5",
+   "title": "Вашу машину ударили и уехали: новая схема мошенничества, о которой стоит знать заранее",
+   "ts": "2026-11-22T11:04:17.333385+00:00",
+   "date": "2026-11-22",
+   "category": "CIS",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMipAFBVV95cUxNUW1UZ09IMVZFRE14M0VhTmZEN29jM1R0aUd5Ti1hYlQxY2tOYUpUa25KX29zUUtjUzZIYk9pYWJuZlJoNVBJMTd1RUswcXRfb1FDS1Y1d2h4QmUzSURzcHpxcDh4M2xRT2Q1bHc4eFFRVmdxN3Q3SjlWWjRRYVp0SVRMMnVtLVFRbko1Rll0TmVHWk42Nm16azFfbW83RjhTandDeNIBqgFBVV95cUxOeElCRVBsLXM5aDdDbUhYQ1pjNHBGN3IwY2RQWE44eXViZHZ5NXFuYzVZLUNjcFQ1M3FUWVNfUnlDREJtNDdxU3hiVlc3RUQ1ZUp6SHpvZXVHSV9Ucm9BaVY3aExydTdBUzBPT0doYUUzTElhRXB2RkFMS3dhS0lTM092aHZRM1Fkc25IWXBLME5rRmFrWWZpdmFJazJEa3JMSmRxTEtFU3hnQQ?oc=5",
+   "title": "Мошенники пугают россиян ДТП на парковке и крадут личные данные",
+   "ts": "2026-11-22T11:04:17.333385+00:00",
+   "date": "2026-11-22",
+   "category": "CIS",
+   "counted": false
   }
  ],
  "evergreen_index": 1,
