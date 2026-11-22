@@ -1193,6 +1193,16 @@
    "date": "2026-11-22",
    "category": "WORLD",
    "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMikAFBVV95cUxQWjhiZU1HR0Y5R3IzakxrX1c5ZGE0OXBvRmdvQlVzS1dabzdxMEVXcEx5NVdONHN6OUFNY3dQVV9yUHFhdDNBX01oYjhoby1WV0RIRmRpa1k4T3hyUEdBTUhoUGdUNGV2RnRMYW90S2pBTW4xTXZRcFJSY3ljQVdCdlBlN0VmbVg0elNabkdibUg?oc=5",
+   "title": "Новая схема мошенников крадёт СМС-коды от банков прямо из телефона",
+   "ts": "2026-11-22T15:18:20.902421+00:00",
+   "date": "2026-11-22",
+   "category": "CIS",
+   "counted": true,
+   "scheme": "hacking",
+   "country": "Мир"
   }
  ],
  "evergreen_index": 1,
