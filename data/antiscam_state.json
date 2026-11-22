@@ -1107,6 +1107,32 @@
    "date": "2026-11-22",
    "category": "CIS",
    "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMilgFBVV95cUxPaEJRa1lMeDhfZno4aUN6QjZyQlRuTWMycVBkckxYWmRDZGQ4bHFfVGZsRUhPM0FQbGtLOVE2Tk9ETG05eUgyV3BsUVNybGR6SENLWG1NdUpuc1dsa3dpaVRDdVFoblNwS3Z5UGtKS0hEUFllUHJ0NUg3TUdpMFo5aFd0YmFlUGt0RzZuY29CcWNNdHVTMFHSAZsBQVVfeXFMT0phSlBJTXZtNVhMa0h4Tnh1bUZjUTVyX056c3drMXZiQ09DQWE3QkdvSjU5R1FBeV8xdFlJQm5ubWNBZmdpeWlxbHpLSlJUR2owY2thS25SczZ3ZW9NaU9oWngzcm15MnZkcmNWNmZnbEU1OGxacXlJOW44NmlNb2RyNXJOazRYR3M5Wms5VmlhLV9BU25GaXgycHc?oc=5",
+   "title": "Warning over Captcha scam that tricks you into infecting your own computer",
+   "ts": "2026-11-22T06:18:24.964684+00:00",
+   "date": "2026-11-22",
+   "category": "WORLD",
+   "counted": true,
+   "scheme": "phishing",
+   "country": "Великобритания"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMilgFBVV95cUxPaEJRa1lMeDhfZno4aUN6QjZyQlRuTWMycVBkckxYWmRDZGQ4bHFfVGZsRUhPM0FQbGtLOVE2Tk9ETG05eUgyV3BsUVNybGR6SENLWG1NdUpuc1dsa3dpaVRDdVFoblNwS3Z5UGtKS0hEUFllUHJ0NUg3TUdpMFo5aFd0YmFlUGt0RzZuY29CcWNNdHVTMFHSAZsBQVVfeXFMT0phSlBJTXZtNVhMa0h4Tnh1bUZjUTVyX056c3drMXZiQ09DQWE3QkdvSjU5R1FBeV8xdFlJQm5ubWNBZmdpeWlxbHpLSlJUR2owY2thS25SczZ3ZW9NaU9oWngzcm15MnZkcmNWNmZnbEU1OGxacXlJOW44NmlNb2RyNXJOazRYR3M5Wms5VmlhLV9BU25GaXgycHc?oc=5",
+   "title": "Warning over Captcha scam that tricks you into infecting your own computer",
+   "ts": "2026-11-22T06:18:24.964684+00:00",
+   "date": "2026-11-22",
+   "category": "WORLD",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMimwFBVV95cUxOdkRNREp2dWtPSGRDblQ2dkpUWTRXWTNFdUE0QTJ4N2d1M3ZZTGZSZk5idDFJdVRJT21aR0tfZzJ4dU9YeHplTVZLcHE3SU0xd0x3b3gyeFc3WlNuUkZSMk9INHZzQUlPaUhNNW10VWJHTGYzUWtVUXFMcVdnU3BLcl92WXpWT2Njdl9wcmVSbkc1emJMY0pBY0k2VQ?oc=5",
+   "title": "Warning over Captcha scam that tricks you into infecting your own computer",
+   "ts": "2026-11-22T06:18:24.964684+00:00",
+   "date": "2026-11-22",
+   "category": "WORLD",
+   "counted": false
   }
  ],
  "evergreen_index": 1,
