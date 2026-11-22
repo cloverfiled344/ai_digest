@@ -1081,6 +1081,32 @@
    "date": "2026-11-22",
    "category": "WORLD",
    "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiygFBVV95cUxPcEhidGwycGtqR2ZNalczdTJjZUtLZFQtVnRyNDhXMWNPdG9Pd0owQWtlRFdvZVM5RnJjeWFDU0ZqQkZwTTZsUGlObDAxSzVvTHJPa3F5V1hrNmo3Q0tNUUJiTFBnZXZBSGxYdWtRMk1sY0p0VFQ5Rnpya09lV2NNV0NRQmtGaHFhcWlWT09xNVRXUXVOTGJMNjB6bmpUZGJXZ19wSldQTXZHRzN6cWw1bzFuaC1xeWU1ZkUySkpQVXRRRlhNTWJkYk13?oc=5",
+   "title": "Тем, кто смотрит видео MrBeast, обещают деньги: раскрыта новая схема мошенничества",
+   "ts": "2026-11-22T03:17:46.129569+00:00",
+   "date": "2026-11-22",
+   "category": "CIS",
+   "counted": true,
+   "scheme": "job",
+   "country": "Мир"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiygFBVV95cUxPcEhidGwycGtqR2ZNalczdTJjZUtLZFQtVnRyNDhXMWNPdG9Pd0owQWtlRFdvZVM5RnJjeWFDU0ZqQkZwTTZsUGlObDAxSzVvTHJPa3F5V1hrNmo3Q0tNUUJiTFBnZXZBSGxYdWtRMk1sY0p0VFQ5Rnpya09lV2NNV0NRQmtGaHFhcWlWT09xNVRXUXVOTGJMNjB6bmpUZGJXZ19wSldQTXZHRzN6cWw1bzFuaC1xeWU1ZkUySkpQVXRRRlhNTWJkYk13?oc=5",
+   "title": "Тем, кто смотрит видео MrBeast, обещают деньги: раскрыта новая схема мошенничества",
+   "ts": "2026-11-22T03:17:46.129569+00:00",
+   "date": "2026-11-22",
+   "category": "CIS",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiS0FVX3lxTE81WWJMTENiNGFESTloTGtaNjBBYmwzOUVOb0ZMZk9kV1pRbnJUVTduRkhKczVnS1UxZnk3V0d3QXBpYjZUNy0yWmlvRQ?oc=5",
+   "title": "Новая схема мошенников с перерасчетом ЖКУ. Аферисты создают закрытые чаты в мессенджерах, маскируясь под официальные службы энергосбыта. 2026",
+   "ts": "2026-11-22T03:17:46.129569+00:00",
+   "date": "2026-11-22",
+   "category": "CIS",
+   "counted": false
   }
  ],
  "evergreen_index": 1,
