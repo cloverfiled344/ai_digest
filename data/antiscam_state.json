@@ -1329,6 +1329,16 @@
    "counted": true,
    "scheme": "phishing",
    "country": "Узбекистан"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMi0gFBVV95cUxNbXg5ZXd1SUJWV1B0RW5uRGxZaVN1a3ZXMC1DRW5JbnhTRHVqekZIVTU1R2tBSlBvVTFYamUyT3ExMENBeDc3UkdNWWdERy1rbmdnTGd5T2xXZlZHR2swamctaG92U1R0aEdGWW0wdlJub3VLVm9qbklsRHlxVElIMHVPa2N5eEQxMzBZVWhSMTgtN2YwUVV3NjBWSE55VnhPVk50RDdfR2xNQVU2cFoybkZBSmQ5VHNXb2ZTN2l6UUFWcUlZUVNnaE42SXZwZXYzZlE?oc=5",
+   "title": "Betrug mit Jobangeboten: Die Polizei Bielefeld warnt vor dem Konto-Trick der Täter",
+   "ts": "2026-11-23T06:18:26.774629+00:00",
+   "date": "2026-11-23",
+   "category": "WORLD",
+   "counted": true,
+   "scheme": "job",
+   "country": "Германия"
   }
  ],
  "evergreen_index": 1,
