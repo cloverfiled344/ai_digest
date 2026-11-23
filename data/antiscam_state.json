@@ -1397,6 +1397,24 @@
    "date": "2026-11-23",
    "category": "CIS",
    "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMilAFBVV95cUxPbjlZdGp4TF9vUWliZXB0SXFIeXk5dFJVWDRBRkgza0ZleS1PQ0xIb2xLb3N4NEx5enctUlVFV3VEdUZ0eFRfTHh1WEVnWXpCeE5wSEctQlY1VThxYmU4WGFUOWVYcEloV0lrYjlGUmQta0pGS1RkbnZsUDBoNENTSlpyYkZqNjBQUWQtS1hQVlYtSVZU?oc=5",
+   "title": "PM alerta sobre golpe de falsa cobrança após homicídios na região",
+   "ts": "2026-11-23T12:18:51.348600+00:00",
+   "date": "2026-11-23",
+   "category": "WORLD",
+   "counted": true,
+   "scheme": "other",
+   "country": "Бразилия"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxPU1FmT1p1RkhMemM3WFJvVEVpWUVQb2w4d0pGSnByOHRkU0FHckZsOGxEV3ZNbWJlMkpxcncyWVF1ZnQ5eW9CcUR2Q01CUkRGdkZKTDd5a3JvOVZkWTY5OTFmVjBjd1cwNU9NZlNkX2VFMEJ0ZHV3RnhIN25XcXo5QUF3X1lXYl9TZWN2S1BSSjBVMUhDNWpuTFhhZDVIeUwzQTVjYjZ1T3dsZw?oc=5",
+   "title": "Polícia Militar alerta sobre golpe de falsa cobrança após homicídios",
+   "ts": "2026-11-23T12:18:51.348600+00:00",
+   "date": "2026-11-23",
+   "category": "WORLD",
+   "counted": false
   }
  ],
  "evergreen_index": 1,
