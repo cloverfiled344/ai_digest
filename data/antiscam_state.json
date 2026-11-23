@@ -1319,6 +1319,16 @@
    "date": "2026-11-23",
    "category": "WORLD",
    "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMie0FVX3lxTFBXUnRKS2NCZHJWblI4NmVBUi1iZ3dyODJfSDZUVzVBVnR4NEx2Ml8xZHdRcmVQM1ZTbGE3WUdSZ3lPR0dtajcwRmdweWRfUmM1NkRaMU5lVHZTN3laVW13RlU5d3paVE5hcUphT2FoZ3FCWHQ3dnJDVDBZUQ?oc=5",
+   "title": "Фейковые ресурсы Telegram от имени налоговой службы",
+   "ts": "2026-11-23T03:18:34.902865+00:00",
+   "date": "2026-11-23",
+   "category": "CIS",
+   "counted": true,
+   "scheme": "phishing",
+   "country": "Узбекистан"
   }
  ],
  "evergreen_index": 1,
