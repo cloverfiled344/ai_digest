@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       post_id:
-        description: "id поста из data/antiscam_state.json → recent_posts (пусто = выбрать самому)"
+        description: "id поста из data/antiscam_state.json → recent_posts (пусто = выбрать самому, test = проверочный ролик)"
         type: string
         default: ""
       dry_run:

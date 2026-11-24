@@ -72,7 +72,11 @@ def main():
     posts = state.get("recent_posts", [])
     done = load(VIDEOS, {})
     want = os.environ.get("POST_ID", "").strip()
-    post = next((p for p in posts if p["id"] == want), None) if want else pick(posts, done, v)
+    if want == "test":  # проверка сборки без Claude: сценарий из public/scenario.example.json
+        post = {"id": "test", "title": "Тестовый ролик «Это ты на видео?»", "category": "MANUAL",
+                "scenario": json.load(open(os.path.join(HERE, "public", "scenario.example.json"), encoding="utf-8"))}
+    else:
+        post = next((p for p in posts if p["id"] == want), None) if want else pick(posts, done, v)
     if not post:
         log("Нет поста для ролика" + (f" с id {want}" if want else ""))
         return
@@ -89,7 +93,7 @@ def main():
     else:
         log("ANTISCAM_ADMIN_CHAT_ID не задан или тестовый режим — ролик только в артефактах запуска")
 
-    if os.environ.get("DRY_RUN") != "1":
+    if os.environ.get("DRY_RUN") != "1" and post["id"] != "test":
         done[post["id"]] = {"day": datetime.now(TZ).strftime("%Y%m%d"), "title": post.get("title"),
                             "voice": meta["voice"], "ts": datetime.now(timezone.utc).isoformat()}
         # храним 60 последних
