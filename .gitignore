@@ -1,3 +1,13 @@
 __pycache__/
 *.pyc
 .env
+
+# antiscam/video — сборка роликов
+antiscam/video/node_modules/
+antiscam/video/out/
+antiscam/video/public/vo/
+antiscam/video/public/audio/
+antiscam/video/public/timeline.json
+antiscam/video/public/scenario.json
+antiscam/video/script.json
+out_video/

@@ -334,3 +334,11 @@ sources:
   - name: "Krebs on Security"
     type: rss
     url: "https://krebsonsecurity.com/feed/"
+
+# Ролики к постам (antiscam/video, workflow «Antiscam video»)
+video:
+  per_day: 2                         # сколько роликов в день
+  categories: [MANUAL, CIS, WORLD]   # из каких рубрик и в каком приоритете
+  max_age_hours: 30                  # ролик только для свежих постов
+  channel: "Fish or not Fish"        # название в конце ролика
+  socials: []                        # строки в конце ролика и под подписью Instagram, например "Telegram: @..."
