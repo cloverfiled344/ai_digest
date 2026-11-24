@@ -1,0 +1,105 @@
+name: Antiscam video
+
+# Ролики к постам канала: сценарий (Claude) → озвучка (ElevenLabs или Piper) → 2D-анимация (Remotion) →
+# готовый ролик и подписи для Instagram/Threads приходят в личку (секрет ANTISCAM_ADMIN_CHAT_ID).
+on:
+  schedule:
+    # Время в UTC, Бишкек = UTC+6: 10:40, 14:40, 18:40, 22:40. Один ролик за запуск, не больше video.per_day в день.
+    - cron: "40 4,8,12,16 * * *"
+  workflow_dispatch:
+    inputs:
+      post_id:
+        description: "id поста из data/antiscam_state.json → recent_posts (пусто = выбрать самому)"
+        type: string
+        default: ""
+      dry_run:
+        description: "Тест: собрать ролик, но не присылать и не запоминать"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: antiscam-video
+  cancel-in-progress: false
+
+jobs:
+  video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      STATE_PATH: data/antiscam_state.json
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: antiscam/video/package-lock.json
+
+      - name: Системные библиотеки для Chrome и шрифт с эмодзи
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq fonts-noto-color-emoji libnss3 libdbus-1-3 libatk1.0-0 libgbm1 libxrandr2 \
+            libxkbcommon0 libxfixes3 libxcomposite1 libxdamage1 libatk-bridge2.0-0 libpango-1.0-0 libcairo2 libcups2 \
+            libasound2t64 ffmpeg > /dev/null
+
+      - name: Кэш моделей голоса и распознавания
+        uses: actions/cache@v4
+        with:
+          path: ~/models
+          key: antiscam-models-v1
+
+      - name: Модели (Piper dmitri — запасной голос, GigaAM — тайминги слов для субтитров)
+        run: |
+          M=~/models; mkdir -p $M; GH=https://github.com/k2-fsa/sherpa-onnx/releases/download
+          get() { [ -d "$M/$2" ] || { curl -sSfL "$GH/$1/$2.tar.bz2" | tar xj -C "$M"; echo "got $2"; }; }
+          get tts-models vits-piper-ru_RU-dmitri-medium
+          get asr-models sherpa-onnx-nemo-transducer-giga-am-v2-russian-2025-04-19
+
+      - name: Зависимости
+        working-directory: antiscam/video
+        run: |
+          pip install -q "sherpa-onnx==1.13.8" soundfile numpy scipy requests pyyaml
+          npm ci --no-audit --no-fund
+          npx remotion browser ensure
+
+      - name: Собрать ролик
+        env:
+          MODELS: /home/runner/models
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          VIDEO_MODEL: ${{ vars.ANTISCAM_MODEL || 'claude-sonnet-5-5' }}
+          ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.ANTISCAM_TELEGRAM_TOKEN }}
+          ADMIN_CHAT_ID: ${{ secrets.ANTISCAM_ADMIN_CHAT_ID }}
+          POST_ID: ${{ inputs.post_id }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: python antiscam/video/pipeline.py
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: video
+          path: out_video/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Запомнить, какие ролики сделаны
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/antiscam_videos.json 2>/dev/null || exit 0
+          git diff --cached --quiet && exit 0
+          git commit -m "antiscam-video: update memory"
+          for i in 1 2 3; do
+            git pull --rebase --autostash && git push && exit 0
+            sleep 5
+          done
+          exit 1
