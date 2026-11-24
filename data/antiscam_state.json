@@ -1587,6 +1587,16 @@
    "date": "2026-11-24",
    "category": "CIS",
    "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMi_AFBVV95cUxOcEtCZklnNU1ZenA5SVp5MjdaclBWeXoyRHI4bXVaeC1PVkdwNjFYNUY4WkItZ1dFV0RkSEpMc0MyQWZHSURMUTdfODYxbXAxRjhQTnJPY1FGdURpa2R3UldTbU8wMWtlT3ZmTERwMnQ4bTJxcmhpT284bVI3TENuaGJ0cWRFZjhpZmQwSGdlZXJzQS1TWFFobmdzaVFZT1poNnFQbVA5eWFsR2lFMVlUSnFZeTJsZS1rbGRQZWJJeUQzR2NFZDJhNGxONjI5MFY5cjhPWGktRWNFUHZDN3RJa2FDUlFENEJDTDJvYUlKLXlkVGo2bVpGUTc2Tmk?oc=5",
+   "title": "Surat Police Bust Cyber Fraud Ring in Madhya Pradesh After Elderly Man Loses ₹9.02 Lakh to APK Scam",
+   "ts": "2026-11-24T18:20:16.688809+00:00",
+   "date": "2026-11-25",
+   "category": "WORLD",
+   "counted": true,
+   "scheme": "phishing",
+   "country": "Индия"
   }
  ],
  "evergreen_index": 1,
