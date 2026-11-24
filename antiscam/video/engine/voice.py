@@ -35,7 +35,28 @@ class ElevenLabs:
         return np.frombuffer(r.content, dtype="<i2").astype(np.float32) / 32768.0, 24000
 
 
+class Clone:
+    """Голос по образцу (voice/ref.flac) — Chatterbox Multilingual (MIT), работает на CPU.
+    Образец английский, поэтому cfg_weight по умолчанию 0: меньше акцента при русской речи."""
+    def __init__(self, ref):
+        from chatterbox.mtl_tts import ChatterboxMultilingualTTS
+        import torch
+        torch.set_num_threads(os.cpu_count() or 2)
+        self.m = ChatterboxMultilingualTTS.from_pretrained(device="cpu")
+        self.ex = float(os.environ.get("CLONE_EXAGGERATION", "0.5"))
+        self.cfg = float(os.environ.get("CLONE_CFG", "0"))
+        self.m.prepare_conditionals(ref, exaggeration=self.ex)
+
+    def generate(self, text, speed=1.0, next_text=""):
+        import torch
+        torch.manual_seed(7)
+        wav = self.m.generate(text, language_id="ru", exaggeration=self.ex, cfg_weight=self.cfg, temperature=0.7)
+        return wav.squeeze(0).cpu().numpy().astype(np.float32), self.m.sr
+
+
 def make_tts(lang, voice):
+    if voice == "clone":
+        return Clone(os.environ.get("CLONE_REF", "voice/ref.flac")), None
     if voice == "elevenlabs":
         return ElevenLabs(os.environ["ELEVENLABS_API_KEY"], os.environ["ELEVENLABS_VOICE_ID"]), None
     if lang == "en":
@@ -63,7 +84,7 @@ def make_asr(lang):
 
 
 def synth(tts, sid, text, speed, next_text=""):
-    if isinstance(tts, ElevenLabs):
+    if isinstance(tts, (ElevenLabs, Clone)):
         x, sr = tts.generate(text, speed, next_text)
     else:
         a = tts.generate(text, sid=sid, speed=speed)

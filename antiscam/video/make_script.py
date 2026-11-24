@@ -40,9 +40,17 @@ if "--slots" in sys.argv:
             name = {"chat": "pop", "flags": "click", "todo": "ding"}[ln["scene"]]
             sfx.append({"sfx": name, "t": round(t, 3), "gain": 0.45 if name != "ding" else 0.35,
                         **({"args": {"f0": 700 + 50 * k}} if name == "pop" else {"args": {"note": 76 + 2 * k}} if name == "ding" else {})})
-eleven = bool(os.environ.get("ELEVENLABS_API_KEY") and os.environ.get("ELEVENLABS_VOICE_ID"))
-script = {"lang": "ru", "voice": "elevenlabs" if eleven else sc.get("voice", "dmitri"),
-          "speed": 1.0 if eleven else sc.get("speed", 1.05), "pause": 0.3, "end_card": 2.5,
+def pick_voice():
+    """ElevenLabs (если есть ключ) → клон голоса по voice/ref.flac → бесплатный Piper."""
+    if os.environ.get("ELEVENLABS_API_KEY") and os.environ.get("ELEVENLABS_VOICE_ID"):
+        return "elevenlabs"
+    if os.path.exists("voice/ref.flac") and os.environ.get("VOICE_CLONE", "1") != "0":
+        return "clone"
+    return sc.get("voice", "dmitri")
+
+
+voice = pick_voice()
+script = {"lang": "ru", "voice": voice, "speed": 1.0 if voice in ("elevenlabs", "clone") else sc.get("speed", 1.05), "pause": 0.3, "end_card": 2.5,
           "lines": lines, "caption_fixes": sc.get("caption_fixes", []), "cues": {},
           "music": {"bpm": 112, "sections": music, "level": 0.45}, "sfx": [s for s in sfx if s.get("gain", 1) > 0]}
 json.dump(script, open(dst, "w", encoding="utf-8"), ensure_ascii=False, indent=1)
