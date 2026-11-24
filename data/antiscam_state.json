@@ -1543,6 +1543,16 @@
    "date": "2026-11-24",
    "category": "CIS",
    "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiXkFVX3lxTE9qMmoxRGhiZmU1bFhzTHRLYmRfUWtsazM5Y3BxYXdsbXExbWphR1NjaHRYVFFDS1BxWjVFTnl0WmpBeG43ZWVna1FNclZFWE9NNnFBSHhkalBWQ0J0UGc?oc=5",
+   "title": "Мошенники похитили более $37 млн у американских инвесторов через фейковые криптобиржи",
+   "ts": "2026-11-24T13:33:05.635541+00:00",
+   "date": "2026-11-24",
+   "category": "WORLD",
+   "counted": true,
+   "scheme": "investment",
+   "country": "США"
   }
  ],
  "evergreen_index": 1,
