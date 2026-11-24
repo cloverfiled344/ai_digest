@@ -12,6 +12,10 @@ on:
         description: "id поста из data/antiscam_state.json → recent_posts (пусто = выбрать самому, test = проверочный ролик)"
         type: string
         default: ""
+      voice_id:
+        description: "Попробовать другой голос ElevenLabs (Voice ID); пусто = из секрета ELEVENLABS_VOICE_ID"
+        type: string
+        default: ""
       dry_run:
         description: "Тест: собрать ролик, но не присылать и не запоминать"
         type: boolean
@@ -84,8 +88,8 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           VIDEO_MODEL: ${{ vars.ANTISCAM_MODEL || 'claude-sonnet-5-5' }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
-          ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
-          VOICE_CLONE: ${{ vars.ANTISCAM_VOICE_CLONE || '1' }}   # 0 — бесплатный голос Piper вместо клона
+          ELEVENLABS_VOICE_ID: ${{ inputs.voice_id || secrets.ELEVENLABS_VOICE_ID }}
+          VOICE_CLONE: ${{ vars.ANTISCAM_VOICE_CLONE || '0' }}   # 1 — клон по voice/ref.flac вместо Piper, если нет ElevenLabs
           TELEGRAM_BOT_TOKEN: ${{ secrets.ANTISCAM_TELEGRAM_TOKEN }}
           ADMIN_CHAT_ID: ${{ secrets.ANTISCAM_ADMIN_CHAT_ID }}
           POST_ID: ${{ inputs.post_id }}
