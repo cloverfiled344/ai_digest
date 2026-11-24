@@ -342,4 +342,4 @@ video:
   voice_id: "81X2nwfW4vhuIZNClEZi"   # голос ElevenLabs (Voice ID не секрет; секрет — только ELEVENLABS_API_KEY)
   categories: [MANUAL, CIS, WORLD]   # из каких рубрик и в каком приоритете
   channel: "Fish or not Fish"        # название в конце ролика
-  socials: []                        # строки в конце ролика и под подписью Instagram, например "Telegram: @..."
+  socials: ["Telegram: t.me/official_bait_news"]                        # строки в конце ролика и под подписью Instagram, например "Telegram: @..."

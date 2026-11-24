@@ -373,7 +373,8 @@ const Outro: React.FC<{ t: number; i: number }> = ({ t, i }) => {
       <Cell id="ouh" x={540} y={520} r={140} t={t} pal={P.hunter} knobs={12} mood="happy" look={[0, 0.6]} glow={0.45} squash={bump(t, st + 0.2, 0.35)} opacity={pop(t, st)} />
       <Title t={t} t0={st + 0.2} y={850} lines={[{ text: "ПОДПИШИСЬ", color: C.yellow, size: 128 }]} />
       {SC.channel && <T x={540} y={980} size={54} outline text={SC.channel} opacity={pop(t, st + 0.5)} />}
-      {socials.map((s, k) => <Pill key={k} x={540} y={1460 + k * 100} text={s} bg="#2A2A6E" size={38} scale={pop(t, st + 0.7 + k * 0.12)} />)}
+      {socials.map((s, k) => <Pill key={k} x={540} y={1120 + k * 115} text={s} bg={k ? "#2A2A6E" : C.blue} size={Math.min(46, Math.floor(1250 / Math.max(1, s.length)))}
+        scale={pop(t, st + 0.7 + k * 0.12) * (1 + 0.04 * Math.sin(t * 5))} />)}
     </g>
   );
 };
