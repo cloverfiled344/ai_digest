@@ -68,6 +68,8 @@ def send_for_review(chat, out_dir, post, meta):
 
 def main():
     v = CFG.get("video") or {}
+    if not os.environ.get("ELEVENLABS_VOICE_ID", "").strip() and v.get("voice_id"):
+        os.environ["ELEVENLABS_VOICE_ID"] = str(v["voice_id"])  # голос из config.yaml
     for name in ("ELEVENLABS_API_KEY", "ELEVENLABS_VOICE_ID", "ADMIN_CHAT_ID", "TELEGRAM_BOT_TOKEN"):
         log(f"{name}: {'задан' if os.environ.get(name, '').strip() else 'НЕ ЗАДАН'}")
     state = load(STATE, {})
