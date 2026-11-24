@@ -337,7 +337,7 @@ sources:
 
 # Ролики к постам (antiscam/video, workflow «Antiscam video»)
 video:
-  admin_chat_id: ""                  # твой id в Telegram: сюда приходят ролики на одобрение (кнопки «Опубликовать»/«Пропустить»)
+  admin_chat_id: "721711450"                  # твой id в Telegram: сюда приходят ролики на одобрение (кнопки «Опубликовать»/«Пропустить»)
   every_days: 5                      # один ролик раз в N дней — по лучшему посту за этот период (выбирает Claude)
   voice_id: "81X2nwfW4vhuIZNClEZi"   # голос ElevenLabs (Voice ID не секрет; секрет — только ELEVENLABS_API_KEY)
   categories: [MANUAL, CIS, WORLD]   # из каких рубрик и в каком приоритете
