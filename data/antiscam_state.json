@@ -1553,6 +1553,40 @@
    "counted": true,
    "scheme": "investment",
    "country": "США"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMilgFBVV95cUxPZGtSaWNZYWtMQU44eTdocUNycWkyMFZ0NEticlZCck1yc2JwRWpwazdHZHAtQ1ZuSHhYS0hWUkRWT1d2clZaNDhoX29BSVBweWNQVllNbzV4ZldXekd4OWZvdDlqdDVRbURLVmxkbi1EYm9tajZ5N2dCdGZFVjZJZkt1cDNPTks2bWduZE96ejVhY2MzeWc?oc=5",
+   "title": "Счета открывают с помощью дипфейков: Нацбанк готовит ответ мошенникам — Деловые новости Казахстана",
+   "ts": "2026-11-24T15:19:54.907132+00:00",
+   "date": "2026-11-24",
+   "category": "CIS",
+   "counted": true,
+   "scheme": "other",
+   "country": "Казахстан"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMilgFBVV95cUxPZGtSaWNZYWtMQU44eTdocUNycWkyMFZ0NEticlZCck1yc2JwRWpwazdHZHAtQ1ZuSHhYS0hWUkRWT1d2clZaNDhoX29BSVBweWNQVllNbzV4ZldXekd4OWZvdDlqdDVRbURLVmxkbi1EYm9tajZ5N2dCdGZFVjZJZkt1cDNPTks2bWduZE96ejVhY2MzeWc?oc=5",
+   "title": "Счета открывают с помощью дипфейков: Нацбанк готовит ответ мошенникам — Деловые новости Казахстана",
+   "ts": "2026-11-24T15:19:54.907132+00:00",
+   "date": "2026-11-24",
+   "category": "CIS",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiaEFVX3lxTE9ldXQ0VUllUGVmUGI2bkxFeUVqcklHNWphLVRucjNFWXgwdzlYZ1RJdUU0eVNTWkpsOUhGS1hfVERhUDR6YWVwMGUtSEpZZ3JDRm5RbU9qZnRfc0ZuNVBzZWs1LW9sVVhX?oc=5",
+   "title": "Мошенники создают фейковые сайты таможни: как не попасться при оформлении авто",
+   "ts": "2026-11-24T15:19:54.907132+00:00",
+   "date": "2026-11-24",
+   "category": "CIS",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiiwFBVV95cUxNRW9sMFh4X1IxOXkzSF8tNkFuY3hkZUNqR2lFT0d6c2VfWGVoakVjNC1UT29SSGIzeG5tR1dGRXRURFZrYUxTOTgyMmNRSTZ4VGZjRE10alpYTXh6UWRtMXRiaFdNZDNGUWFicVYxTkdZZDZsb1lLcHhJVVBmOE9ndEwxMUNreE13YzU4?oc=5",
+   "title": "Мошенники создали фейковый сайт беларусской таможни",
+   "ts": "2026-11-24T15:19:54.907132+00:00",
+   "date": "2026-11-24",
+   "category": "CIS",
+   "counted": false
   }
  ],
  "evergreen_index": 1,
