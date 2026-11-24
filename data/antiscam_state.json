@@ -1493,6 +1493,56 @@
    "date": "2026-11-24",
    "category": "WORLD",
    "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMihwFBVV95cUxPUlRrSy1KTHdVNk5jZXJtU01BVDJmemVnUlVHOF94dkVZdUwwaU5SZlJ6OEppOVZSY0FEWHdtZHVNMnNMcFo2eHpJZ3hURFRzXy1uMV9TRXFaTnoyLXdLVU9fRXUzVUxfUm5GMjZ5bzBRZUdtMHRhempmWjV1SmRtajVhWmRHUmvSAYwBQVVfeXFMUHN1bzdySnZWUzRHWWVIX0luUVBQaGpQVGJCQWxDLXNleDZFTXQyX09XeHVfc2F3QVdKR2k3YjV3cFlIODM4dDF6TVVwdFNnQlJ4VzlJRW53b2Zpc0VyX0ZNZV9QYXVqTUk2Mi1sVWpyTi1QTUkxVEVkemNER0FMVmdNNzFFT2l3enhGSVo?oc=5",
+   "title": "Теперь от имени «Белэнерго»: мошенники придумали новую схему обмана белорусов",
+   "ts": "2026-11-24T06:19:11.239235+00:00",
+   "date": "2026-11-24",
+   "category": "CIS",
+   "counted": true,
+   "scheme": "bank_call",
+   "country": "Беларусь"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMijAFBVV95cUxQc3VvN3JKdlZTNEdZZUhfSW5RUFBoalBUYkJBbEMtc2V4NkVNdDJfT1d4dV9zYXdBV0pHaTdiNXdwWUg4Mzh0MXpNVXB0U2dCUnhXOUlFbndvZmlzRXJfRk1lX1BhdWpNSTYyLWxVanJOLVBNSTFURWR6Y0RHQUxWZ003MUVPaXd6eEZJWtIBjAFBVV95cUxQc3VvN3JKdlZTNEdZZUhfSW5RUFBoalBUYkJBbEMtc2V4NkVNdDJfT1d4dV9zYXdBV0pHaTdiNXdwWUg4Mzh0MXpNVXB0U2dCUnhXOUlFbndvZmlzRXJfRk1lX1BhdWpNSTYyLWxVanJOLVBNSTFURWR6Y0RHQUxWZ003MUVPaXd6eEZJWg?oc=5",
+   "title": "Теперь от имени «Белэнерго»: мошенники придумали новую схему обмана белорусов",
+   "ts": "2026-11-24T06:19:11.239235+00:00",
+   "date": "2026-11-24",
+   "category": "CIS",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMi0AFBVV95cUxNS3JOZWk5bjJKNDdUOTVuaTdhcnhISzJmUEEzVFdtSmZoWTVRQnJSeTJKODRZZ1lfaFVicXFSNDZaX1dwZkxpMVF4bHplVXdvVVk4ZVdIZ0xyYmZEcFVMSjMyWEVpN1FjcjJaS2ViNmpUNU9jZ042TGs1dkN0QlY5dXV6b0ZleDREQXBCVUk2djI5aFVLTmZDWjVFdkNXdUNqZjA1d3NIQVUyRE5hc2wwWGFiZXlFT3VqQzdLMldiQk9hZE1ZV29QOHc3R2htTHA40gHWAUFVX3lxTE5SUVRUQ2MtRWJfd1FaekZucExGSlUyeHJGU0I3eXBwLWtya05uMmtTMjVYbVNETUpHbFF3UGZHRGJ6OHdpVTRkdXFmQkJITWpiNU1JSFh2N0J6U0ZwbFgxdmt0TEhvVXJiZ1lGT3ZHUFd3eml2UGVCb0UzMkxnamhOUUkwRlF0cnQ2OWFFX3VYTGN1bUNQN1N2dFlGeFFlWVVlX3ktVjRfSndFVVlkZnl0c2xYOGJRajRUbHFrUnRpa0doSHlyekZTU2FETkI3OFZNZFF0cnc?oc=5",
+   "title": "Подозреваемого в 32 эпизодах мошенничества с арендой квартир задержали в Алматы",
+   "ts": "2026-11-24T06:19:11.239235+00:00",
+   "date": "2026-11-24",
+   "category": "CIS",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMidkFVX3lxTE45MmM3am5sX2h0a1l2Vy1mREJUTDNwQUxMS3JfSWpaM0xmemFBUjBOVmlQXzNQQ1d2UWdGMVhDZURJbGZvUXRMV3pGX1Q0VUZXWXNnbkF6RjJWbnJkQ1FwNmpZekxreUlBVFliTXpGbkJ0eWY4ZVE?oc=5",
+   "title": "В Алматы задержан подозреваемый в 32 эпизодах мошенничества с арендой жилья",
+   "ts": "2026-11-24T06:19:11.239235+00:00",
+   "date": "2026-11-24",
+   "category": "CIS",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxNamxPekRYb3l5dnlOeS03T2ktRzJTUkYwanNfbkw3QmtKQnpac3RtdUxqOVdETzlpa2EzcUVWLUNKeWIyZDV5M19VTWJXRVIzbFZiV1pwWlZFbWZzU0NqdHMwSUZvSHhTR1ZhWnBjdXZiZTBnclh1bS1NMWNEbEp0TklJbmNXajNjTFhTcnFNZmFadFBwX21tVVRoRXIzbmpoOXZCYWhVV3E?oc=5",
+   "title": "В Алматы мошенник сдавал в аренду квартиры-призраки",
+   "ts": "2026-11-24T06:19:11.239235+00:00",
+   "date": "2026-11-24",
+   "category": "CIS",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMikgFBVV95cUxNZUFsaU9HTmc4ejVoT2FLUlo1QmE4aFFCOC1wbEd4NGRXM0t6MWRrb0IxZ0NHNDlKSzZFb3BOYkVrd1RJU3llQkNkOFFnUFQtN0VmVVRBYjZnN2N4ZkxfYkNlN05Bc3FwajFSdENmUkJVcHUwcHdCbXNNeHJlMDZpazRMUWlXZlBobGhmTUxSeGVwUdIBlwFBVV95cUxQYmxzNnZLcVpkRkI0LVpqVXFCS0FWU0Vkc19aRFZwZGNEQ2VYd0ZxUE9OU3NocjJJTXBUSHFpRHJoZFl2ZWxHeGxUSjBWMDFQNE51NDFSU2t6dU4ta19rUmtQcXQ0ZDVudG9UdEZfY3BHMmU0TVlYZW85WEVpZFVTMW9SQzJwb1A3V1owekdZRTd3NDZUQi1R?oc=5",
+   "title": "Алматинец обманывал людей под видом аренды квартир",
+   "ts": "2026-11-24T06:19:11.239235+00:00",
+   "date": "2026-11-24",
+   "category": "CIS",
+   "counted": false
   }
  ],
  "evergreen_index": 1,
