@@ -95,6 +95,7 @@ def cfg(tmp_path, monkeypatch):
     monkeypatch.setattr(bot, "STATE_PATH", str(tmp_path / "posted.json"))
     monkeypatch.setattr(bot, "LLM_ERRORS", [])
     monkeypatch.setattr(bot, "MANUAL_DIR", str(tmp_path / "manual"))
+    monkeypatch.setattr(bot, "VIDEOS_PATH", str(tmp_path / "videos.json"))
     for k in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "ANTHROPIC_API_KEY", "GEMINI_API_KEY",
               "CATEGORY", "DRY_RUN", "BOT_CTA", "ADD_KYRGYZ"):
         monkeypatch.delenv(k, raising=False)
@@ -474,3 +475,35 @@ def test_manual_post_goes_first_once(cfg, fake_net, monkeypatch, tmp_path):
     assert "Это ты на видео?" in sent[0][1] and "#взлом" in sent[0][1]
     assert sum("Это ты на видео?" in t for _, t in sent) == 1
     assert bot.load_state()["manual_done"] == ["001.yaml"]
+
+
+def test_video_approval_publishes_reply(cfg, monkeypatch):
+    """Админ нажал «Опубликовать» — ролик уходит в канал ответом на исходный пост."""
+    bot.CONFIG = dict(cfg, video={"admin_chat_id": "42"})
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:abc")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "-100555")
+    bot.save_videos({"p1": {"status": "pending", "file_id": "FILE", "caption": "Короткая версия", "reply_to": 77},
+                     "p2": {"status": "pending", "file_id": "F2", "caption": "x"}})
+    calls = []
+
+    def fake_post(url, json=None, timeout=0):
+        method = url.rsplit("/", 1)[-1]
+        calls.append((method, json))
+        if method == "getUpdates":
+            return FakeResp(json_data={"ok": True, "result": [
+                {"update_id": 10, "callback_query": {"id": "c1", "from": {"id": 999}, "data": "vpub:p2"}},   # чужой
+                {"update_id": 11, "callback_query": {"id": "c2", "from": {"id": 42}, "data": "vpub:p1",
+                                                     "message": {"chat": {"id": 42}, "message_id": 5}}},
+                {"update_id": 12, "callback_query": {"id": "c3", "from": {"id": 42}, "data": "vskip:p2"}}]})
+        if method == "sendVideo":
+            return FakeResp(json_data={"ok": True, "result": {"message_id": 88}})
+        return FakeResp(json_data={"ok": True, "result": True})
+
+    monkeypatch.setattr(bot.requests, "post", fake_post)
+    state = {}
+    assert bot.poll_approvals(state)
+    v = bot.load_videos()
+    assert v["p1"]["status"] == "published" and v["p1"]["channel_message_id"] == 88
+    assert v["p2"]["status"] == "skipped" and state["tg_offset"] == 13
+    sv = next(j for m, j in calls if m == "sendVideo")
+    assert sv["video"] == "FILE" and sv["reply_parameters"]["message_id"] == 77 and sv["chat_id"] == "-100555"
