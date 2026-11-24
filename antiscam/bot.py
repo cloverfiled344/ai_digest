@@ -1021,12 +1021,12 @@ def post_one(state, dry):
         return False
     send_post(text, preview, silent=is_silent(category), state=state)
     mark_posted(state, used, category, meta)
-    # последние посты целиком — по ним собираются ролики (antiscam/video)
+    # последние посты целиком (~8 дней) — из них раз в несколько дней выбирается пост для ролика (antiscam/video)
     state.setdefault("recent_posts", []).append({
         "id": local_now().strftime("%Y%m%d-%H%M%S"), "ts": now_utc().isoformat(), "category": category,
         "title": (used[0].get("title") if used else "") or "", "link": (used[0].get("link") if used else "") or "",
         "scheme": meta.get("scheme"), "country": meta.get("country"), "text": text})
-    state["recent_posts"] = state["recent_posts"][-30:]
+    state["recent_posts"] = state["recent_posts"][-60:]
     for it in used:
         if it.get("manual"):
             state.setdefault("manual_done", []).append(it["manual"])

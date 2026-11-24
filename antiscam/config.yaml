@@ -337,9 +337,8 @@ sources:
 
 # Ролики к постам (antiscam/video, workflow «Antiscam video»)
 video:
-  per_day: 2                         # сколько роликов в день
+  every_days: 5                      # один ролик раз в N дней — по лучшему посту за этот период (выбирает Claude)
   voice_id: "81X2nwfW4vhuIZNClEZi"   # голос ElevenLabs (Voice ID не секрет; секрет — только ELEVENLABS_API_KEY)
   categories: [MANUAL, CIS, WORLD]   # из каких рубрик и в каком приоритете
-  max_age_hours: 30                  # ролик только для свежих постов
   channel: "Fish or not Fish"        # название в конце ролика
   socials: []                        # строки в конце ролика и под подписью Instagram, например "Telegram: @..."
