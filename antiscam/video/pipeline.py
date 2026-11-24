@@ -68,6 +68,8 @@ def send_for_review(chat, out_dir, post, meta):
 
 def main():
     v = CFG.get("video") or {}
+    for name in ("ELEVENLABS_API_KEY", "ELEVENLABS_VOICE_ID", "ADMIN_CHAT_ID", "TELEGRAM_BOT_TOKEN"):
+        log(f"{name}: {'задан' if os.environ.get(name, '').strip() else 'НЕ ЗАДАН'}")
     state = load(STATE, {})
     posts = state.get("recent_posts", [])
     done = load(VIDEOS, {})
