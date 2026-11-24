@@ -51,7 +51,12 @@ class Clone:
         import torch
         torch.manual_seed(7)
         wav = self.m.generate(text, language_id="ru", exaggeration=self.ex, cfg_weight=self.cfg, temperature=0.7)
-        return wav.squeeze(0).cpu().numpy().astype(np.float32), self.m.sr
+        x = wav.squeeze(0).cpu().numpy().astype(np.float32)
+        rate = float(os.environ.get("CLONE_SPEED", "1.15")) * speed  # клон говорит медленно — ускоряем без смены тона
+        if abs(rate - 1) > 0.01:
+            import librosa
+            x = librosa.effects.time_stretch(x, rate=rate).astype(np.float32)
+        return x, self.m.sr
 
 
 def make_tts(lang, voice):
