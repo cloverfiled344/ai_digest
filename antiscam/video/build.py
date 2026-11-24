@@ -173,7 +173,7 @@ def main(post_path, out_dir):
     meta = {"post_id": post.get("id"), "title": post.get("title"), "scenario": scenario,
             "ig_caption": (str(sc.get("ig_caption") or "")[:1800] + ("\n\n" + extra if extra else "")).strip(),
             "threads_text": str(sc.get("threads_text") or "")[:420].strip(), "ky": str(sc.get("ky") or "")[:120],
-            "voice": "elevenlabs" if os.environ.get("ELEVENLABS_API_KEY") and os.environ.get("ELEVENLABS_VOICE_ID") else "piper"}
+            "voice": json.load(open(os.path.join(HERE, "script.json"), encoding="utf-8")).get("voice")}
     with open(os.path.join(out_dir, "meta.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=1)
     log(f"Готово: {out_dir}")

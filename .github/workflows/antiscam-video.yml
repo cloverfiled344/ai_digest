@@ -1,6 +1,6 @@
 name: Antiscam video
 
-# Ролики к постам канала: сценарий (Claude) → озвучка (ElevenLabs или Piper) → 2D-анимация (Remotion) →
+# Ролики к постам канала: сценарий (Claude) → озвучка (ElevenLabs, или клон голоса по voice/ref.flac, или Piper) → 2D-анимация (Remotion) →
 # готовый ролик и подписи для Instagram/Threads приходят в личку (секрет ANTISCAM_ADMIN_CHAT_ID).
 on:
   schedule:
@@ -27,7 +27,7 @@ concurrency:
 jobs:
   video:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 75
     env:
       STATE_PATH: data/antiscam_state.json
     steps:
@@ -63,10 +63,18 @@ jobs:
           get tts-models vits-piper-ru_RU-dmitri-medium
           get asr-models sherpa-onnx-nemo-transducer-giga-am-v2-russian-2025-04-19
 
+      - name: Кэш модели клонирования голоса (Chatterbox)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: antiscam-chatterbox-v1
+
       - name: Зависимости
         working-directory: antiscam/video
         run: |
-          pip install -q "sherpa-onnx==1.13.8" soundfile numpy scipy requests pyyaml
+          # torch только для CPU (без CUDA — в 5 раз меньше), затем Chatterbox для голоса по образцу
+          pip install -q torch==2.6.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cpu
+          pip install -q chatterbox-tts "sherpa-onnx==1.13.8" soundfile scipy requests pyyaml
           npm ci --no-audit --no-fund
           npx remotion browser ensure
 
@@ -77,6 +85,7 @@ jobs:
           VIDEO_MODEL: ${{ vars.ANTISCAM_MODEL || 'claude-sonnet-5-5' }}
           ELEVENLABS_API_KEY: ${{ secrets.ELEVENLABS_API_KEY }}
           ELEVENLABS_VOICE_ID: ${{ secrets.ELEVENLABS_VOICE_ID }}
+          VOICE_CLONE: ${{ vars.ANTISCAM_VOICE_CLONE || '1' }}   # 0 — бесплатный голос Piper вместо клона
           TELEGRAM_BOT_TOKEN: ${{ secrets.ANTISCAM_TELEGRAM_TOKEN }}
           ADMIN_CHAT_ID: ${{ secrets.ANTISCAM_ADMIN_CHAT_ID }}
           POST_ID: ${{ inputs.post_id }}
@@ -90,6 +99,14 @@ jobs:
           path: out_video/
           if-no-files-found: ignore
           retention-days: 14
+
+      - name: Тестовый ролик — в ветку video-preview (чтобы послушать без скачивания артефактов)
+        if: inputs.dry_run && hashFiles('out_video/video.mp4') != ''
+        run: |
+          mkdir -p /tmp/pv && cp out_video/video.mp4 out_video/thumb.png /tmp/pv/ && cp out_video/meta.json /tmp/pv/ 2>/dev/null || true
+          cd /tmp/pv && git init -q -b video-preview && git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -qm "preview ${{ github.run_id }}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" video-preview
 
       - name: Запомнить, какие ролики сделаны
         run: |
