@@ -100,6 +100,14 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      - name: Тестовый ролик — в ветку video-preview (чтобы послушать без скачивания артефактов)
+        if: inputs.dry_run && hashFiles('out_video/video.mp4') != ''
+        run: |
+          mkdir -p /tmp/pv && cp out_video/video.mp4 out_video/thumb.png /tmp/pv/ && cp out_video/meta.json /tmp/pv/ 2>/dev/null || true
+          cd /tmp/pv && git init -q -b video-preview && git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -qm "preview ${{ github.run_id }}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" video-preview
+
       - name: Запомнить, какие ролики сделаны
         run: |
           git config user.name "github-actions[bot]"
