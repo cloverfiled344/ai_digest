@@ -164,7 +164,8 @@ def socials_text(cfg):
 def main(post_path, out_dir):
     cfg = yaml.safe_load(open(CONFIG, encoding="utf-8"))
     post = json.load(open(post_path, encoding="utf-8"))
-    sc = ask_claude(PROMPT.format(post=plain(post["text"])[:3500]))
+    # готовый сценарий (тестовый запуск) или сценарий от Claude
+    sc = post.get("scenario") or ask_claude(PROMPT.format(post=plain(post["text"])[:3500]))
     scenario = sanitize(sc, cfg)
     log(json.dumps(scenario, ensure_ascii=False, indent=1))
     render(scenario, out_dir)
