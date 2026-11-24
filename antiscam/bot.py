@@ -961,7 +961,7 @@ def send_post(text, preview_url=None, silent=False, state=None):
             if chat_id != env("TELEGRAM_CHAT_ID"):
                 log(f"⚠️ Канал из секрета ANTISCAM_CHAT_ID не найден, отправил в {real_id}. "
                     f"Поставь в секрет это число, чтобы не зависеть от запасного варианта.")
-            return True
+            return data.get("result", {}).get("message_id") or True
         if not any(e in (data.get("description") or "").lower() for e in CHAT_ERRORS):
             break
         log(f"Чат {chat_id} недоступен — пробую другой")
@@ -1019,13 +1019,14 @@ def post_one(state, dry):
     if dry:
         log("Тестовый режим: пост не отправлен, список опубликованного не изменён.")
         return False
-    send_post(text, preview, silent=is_silent(category), state=state)
+    msg_id = send_post(text, preview, silent=is_silent(category), state=state)
     mark_posted(state, used, category, meta)
     # последние посты целиком (~8 дней) — из них раз в несколько дней выбирается пост для ролика (antiscam/video)
     state.setdefault("recent_posts", []).append({
         "id": local_now().strftime("%Y%m%d-%H%M%S"), "ts": now_utc().isoformat(), "category": category,
         "title": (used[0].get("title") if used else "") or "", "link": (used[0].get("link") if used else "") or "",
-        "scheme": meta.get("scheme"), "country": meta.get("country"), "text": text})
+        "scheme": meta.get("scheme"), "country": meta.get("country"), "text": text,
+        "message_id": msg_id if isinstance(msg_id, int) and not isinstance(msg_id, bool) else None})
     state["recent_posts"] = state["recent_posts"][-60:]
     for it in used:
         if it.get("manual"):
@@ -1047,6 +1048,103 @@ def _slot_times(cfg, day):
         h, m = (int(x) for x in str(hhmm).split(":"))
         out.append(datetime(day.year, day.month, day.day, h, m, tzinfo=tz))
     return sorted(out)
+
+
+# ───────────────────────── ролики: одобрение в личке ─────────────────────────
+# Workflow «Antiscam video» присылает ролик админу с кнопками «Опубликовать» / «Пропустить» и
+# записывает его в data/antiscam_videos.json со status=pending. Бот в режиме --loop каждые 2 минуты
+# смотрит нажатия кнопок и публикует одобренный ролик в канал ответом на исходный пост.
+VIDEOS_PATH = os.environ.get("VIDEOS_PATH") or os.path.join(os.path.dirname(ROOT), "data", "antiscam_videos.json")
+
+
+def load_videos():
+    try:
+        with open(VIDEOS_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def save_videos(videos):
+    os.makedirs(os.path.dirname(VIDEOS_PATH), exist_ok=True)
+    with open(VIDEOS_PATH, "w", encoding="utf-8") as f:
+        json.dump(videos, f, ensure_ascii=False, indent=1)
+
+
+def admin_id():
+    return str(env("ADMIN_CHAT_ID") or (CONFIG.get("video") or {}).get("admin_chat_id") or "").strip()
+
+
+def publish_video(v, state):
+    """Ролик в канал: ответом на исходный пост, подпись — короткая версия + отсылка к разбору."""
+    chat = chat_candidates(state)[-1] if chat_candidates(state) else env("TELEGRAM_CHAT_ID")
+    payload = {"chat_id": chat, "video": v["file_id"], "caption": v.get("caption", "")[:1024],
+               "supports_streaming": True}
+    if v.get("reply_to"):
+        payload["reply_parameters"] = {"message_id": v["reply_to"], "allow_sending_without_reply": True}
+    _, data = tg_call("sendVideo", payload)
+    if not data.get("ok"):
+        raise SystemExit(f"Ролик не опубликован: {data.get('description')}")
+    return data["result"]["message_id"]
+
+
+def poll_approvals(state):
+    """Нажатия кнопок под роликами. True — что-то изменилось (нужно сохранить)."""
+    videos = load_videos()
+    pending = {k: v for k, v in videos.items() if v.get("status") == "pending"}
+    admin = admin_id()
+    if not pending or not admin or not env("TELEGRAM_BOT_TOKEN"):
+        return False
+    _, data = tg_call("getUpdates", {"offset": state.get("tg_offset", 0), "timeout": 0,
+                                     "allowed_updates": ["callback_query"]})
+    changed = False
+    for upd in data.get("result", []) if data.get("ok") else []:
+        state["tg_offset"] = upd["update_id"] + 1
+        changed = True
+        cq = upd.get("callback_query") or {}
+        if str((cq.get("from") or {}).get("id")) != admin:
+            continue
+        action, _, pid = (cq.get("data") or "").partition(":")
+        v = videos.get(pid)
+        if not v or v.get("status") != "pending" or action not in ("vpub", "vskip"):
+            tg_call("answerCallbackQuery", {"callback_query_id": cq["id"], "text": "Уже обработано"})
+            continue
+        if action == "vpub":
+            try:
+                v["channel_message_id"] = publish_video(v, state)
+                v["status"], note = "published", "✅ Опубликовано в канале"
+            except SystemExit as ex:
+                note = f"⚠️ {ex}"
+        else:
+            v["status"], note = "skipped", "❌ Пропущено"
+        v["decided_at"] = now_utc().isoformat()
+        log(f"Ролик {pid}: {note}")
+        tg_call("answerCallbackQuery", {"callback_query_id": cq["id"], "text": note[:190]})
+        msg = cq.get("message") or {}
+        if msg:
+            tg_call("editMessageReplyMarkup", {"chat_id": msg["chat"]["id"], "message_id": msg["message_id"],
+                                               "reply_markup": {"inline_keyboard": [[{"text": note, "callback_data": "noop:"}]]}})
+    if changed:
+        save_videos(videos)
+    return changed
+
+
+def nap(seconds, state_holder):
+    """Сон с проверкой одобрений роликов каждые 2 минуты."""
+    end = time.time() + seconds
+    while True:
+        left = end - time.time()
+        if left <= 0:
+            return
+        time.sleep(min(120, left))
+        try:
+            if load_videos() or os.path.exists(VIDEOS_PATH):
+                git_refresh()  # новые ролики на одобрение приходят коммитом из workflow «Antiscam video»
+            if poll_approvals(state_holder["state"]):
+                save_state(state_holder["state"])
+                git_persist()
+        except (SystemExit, Exception) as ex:  # сбой проверки не должен ронять публикацию постов
+            log(f"Проверка одобрений: {ex}")
 
 
 def due_count(cfg, now=None):
@@ -1089,6 +1187,8 @@ def git_persist():
     if not env_flag("GIT_PERSIST"):
         return
     git("add", STATE_PATH)
+    if os.path.exists(VIDEOS_PATH):
+        git("add", VIDEOS_PATH)
     if git("diff", "--cached", "--quiet").returncode == 0:
         return
     git("commit", "-q", "-m", "antiscam: update memory")
@@ -1138,7 +1238,7 @@ def loop(dry):
             log("Время запуска вышло — дальше продолжит следующий запуск.")
             break
         log(f"Следующая проверка через {wait // 60} мин")
-        time.sleep(wait)
+        nap(wait, {"state": state})
     log(f"Итого за запуск: {published} пост(ов)")
     if errors and not published:
         raise SystemExit("Ни одного поста, последняя ошибка: " + errors[-1])

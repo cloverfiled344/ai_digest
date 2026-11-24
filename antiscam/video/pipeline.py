@@ -111,20 +111,37 @@ def tg(method, **kw):
     return data
 
 
+def channel_caption(post, meta):
+    """Подпись под роликом в канале: короткая версия + отсылка к полному разбору (ролик — ответ на пост)."""
+    title = (post.get("title") or "").strip()
+    body = meta.get("threads_text", "").strip()
+    tail = "👆 Полный разбор схемы — в посте выше" if post.get("message_id") else ""
+    return "\n\n".join(x for x in (f"🎬 {title}" if title else "", body, tail) if x)[:1024]
+
+
 def send_for_review(chat, out_dir, post, meta):
+    """Ролик админу с кнопками. Возвращает file_id видео в Telegram (по нему ролик потом уйдёт в канал)."""
+    cap = channel_caption(post, meta)
+    why = f"\n\n🤔 Почему этот пост: {post['why']}" if post.get("why") else ""
+    head = "🎬 Новый ролик на проверку. Так он выйдет в канале (ответом на исходный пост):\n\n"
+    keyboard = {"inline_keyboard": [[{"text": "✅ Опубликовать", "callback_data": f"vpub:{post['id']}"},
+                                     {"text": "❌ Пропустить", "callback_data": f"vskip:{post['id']}"}]]}
     with open(os.path.join(out_dir, "video.mp4"), "rb") as vf, open(os.path.join(out_dir, "thumb.png"), "rb") as tf:
-        tg("sendVideo", data={"chat_id": chat, "supports_streaming": "true", "width": 1080, "height": 1920,
-                              "caption": f"🎬 Ролик к посту: {post.get('title', '')[:200]}\n{('Почему этот: ' + post['why']) if post.get('why') else ''}"[:1000]},
-           files={"video": ("video.mp4", vf, "video/mp4"), "cover": ("thumb.png", tf, "image/png")})
+        data = tg("sendVideo", data={"chat_id": chat, "supports_streaming": "true", "width": 1080, "height": 1920,
+                                     "caption": (head + cap + why)[:1024], "reply_markup": json.dumps(keyboard)},
+                  files={"video": ("video.mp4", vf, "video/mp4"), "cover": ("thumb.png", tf, "image/png")})
+    if not data.get("ok"):
+        raise SystemExit("Не удалось отправить ролик на проверку")
     tg("sendMessage", json={"chat_id": chat, "text": "📸 Подпись для Instagram:\n\n" + meta["ig_caption"][:3800]})
     tg("sendMessage", json={"chat_id": chat, "text": "🧵 Текст для Threads:\n\n" + meta["threads_text"]})
+    return data["result"]["video"]["file_id"], cap
 
 
 def main():
     v = CFG.get("video") or {}
     if not os.environ.get("ELEVENLABS_VOICE_ID", "").strip() and v.get("voice_id"):
         os.environ["ELEVENLABS_VOICE_ID"] = str(v["voice_id"])  # голос из config.yaml
-    for name in ("ELEVENLABS_API_KEY", "ELEVENLABS_VOICE_ID", "ADMIN_CHAT_ID", "TELEGRAM_BOT_TOKEN"):
+    for name in ("ELEVENLABS_API_KEY", "ELEVENLABS_VOICE_ID", "TELEGRAM_BOT_TOKEN"):
         log(f"{name}: {'задан' if os.environ.get(name, '').strip() else 'НЕ ЗАДАН'}")
     state = load(STATE, {})
     posts = state.get("recent_posts", [])
@@ -149,15 +166,19 @@ def main():
     subprocess.run([sys.executable, os.path.join(HERE, "build.py"), post_path, OUT], check=True)
     meta = json.load(open(os.path.join(OUT, "meta.json"), encoding="utf-8"))
 
-    chat = os.environ.get("ADMIN_CHAT_ID", "").strip()
+    chat = (os.environ.get("ADMIN_CHAT_ID", "").strip() or str(v.get("admin_chat_id") or "")).strip()
+    file_id = cap = None
     if chat and os.environ.get("TELEGRAM_BOT_TOKEN") and os.environ.get("DRY_RUN") != "1":
-        send_for_review(chat, OUT, post, meta)
+        file_id, cap = send_for_review(chat, OUT, post, meta)
     else:
-        log("ANTISCAM_ADMIN_CHAT_ID не задан или тестовый режим — ролик только в артефактах запуска")
+        log("Админ не задан (video.admin_chat_id) или тестовый режим — ролик только в артефактах запуска")
 
     if os.environ.get("DRY_RUN") != "1" and post["id"] != "test":
         done[post["id"]] = {"day": datetime.now(TZ).strftime("%Y%m%d"), "title": post.get("title"),
-                            "voice": meta["voice"], "ts": datetime.now(timezone.utc).isoformat()}
+                            "voice": meta["voice"], "ts": datetime.now(timezone.utc).isoformat(),
+                            # pending — ждёт кнопки в личке; бот (antiscam --loop) опубликует в канал
+                            "status": "pending" if file_id else "not_sent", "file_id": file_id,
+                            "caption": cap, "reply_to": post.get("message_id")}
         # храним 60 последних
         done = dict(sorted(done.items())[-60:])
         os.makedirs(os.path.dirname(VIDEOS), exist_ok=True)
