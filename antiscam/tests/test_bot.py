@@ -193,12 +193,10 @@ def test_collect_categories_and_dedup(cfg, fake_net):
 
 
 def test_plan_order(cfg):
-    assert Counter(cfg["plan"]) == Counter({"CIS": 2, "WORLD": 3}) and cfg["daily_limit"] == 5
+    assert Counter(cfg["plan"]) == Counter({"CIS": 2, "WORLD": 1}) and cfg["daily_limit"] == 3
     assert bot.category_order(cfg, Counter())[0] == "WORLD"
     assert bot.category_order(cfg, Counter({"WORLD": 1}))[0] == "CIS"
-    assert bot.category_order(cfg, Counter({"CIS": 1, "WORLD": 1}))[0] == "WORLD"
-    # СНГ не нашлось — слот СНГ остаётся первым в очереди и пробуется снова
-    assert bot.category_order(cfg, Counter({"WORLD": 2})) == ["CIS", "WORLD"]
+    assert bot.category_order(cfg, Counter({"WORLD": 1, "CIS": 1}))[0] == "CIS"
 
 
 def test_legacy_usa_counts_as_world(cfg):
@@ -227,7 +225,7 @@ def test_full_day(cfg, fake_net, monkeypatch):
     assert cats.count("CIS") >= 2                                     # минимум 2 СНГ за день
 
     for cat, text, meta in posted:
-        assert text.startswith("📍 <b>")
+        assert text.startswith(("📍 <b>", "🔎 <b>РАЗБОР</b>"))
         for tag in ("b", "i", "a"):
             assert text.count(f"<{tag}") == text.count(f"</{tag}>"), (tag, text)
         assert bot.visible_len(text) < 1500 and "@test_bot" in text
@@ -269,7 +267,7 @@ def test_diversity_limits(cfg, fake_net, monkeypatch):
     state["posted"] = [today_rec(i, "WORLD", country="США", scheme="investment") for i in range(3)]
     state["posted"].append(today_rec(9, "CIS", country="Кыргызстан", scheme="prepayment"))
     monkeypatch.setenv("CATEGORY", "WORLD")
-    text, preview, used, meta, category = bot.run_once(cfg, state)
+    text, preview, used, meta, category = bot.run_once(dict(cfg, daily_limit=10), state)
     assert meta["country"] != "США" and "США, Техас" not in text
     pick_prompt = next(u for u in seen if "Выбери до 3" in u)
     assert "сша ×3" in pick_prompt and "#инвестиции ×3" in pick_prompt
@@ -428,13 +426,13 @@ def test_send_post_discovers_single_channel(cfg, monkeypatch):
 def test_due_count_and_slots(cfg):
     tz = bot.local_tz()
     at = lambda h, m=0: datetime(2026, 11, 19, h, m, tzinfo=tz)  # noqa: E731
-    assert bot.due_count(cfg, at(7, 0)) == 0       # ночью постов нет
+    assert bot.due_count(cfg, at(7, 0)) == 0
     assert bot.due_count(cfg, at(9, 20)) == 1
-    assert bot.due_count(cfg, at(16, 0)) == 3
-    assert bot.due_count(cfg, at(23, 0)) == 5
-    assert bot.recent_due(cfg, at(16, 0)) == 1     # за 3 часа прошёл только слот 15:17
+    assert bot.due_count(cfg, at(16, 0)) == 2
+    assert bot.due_count(cfg, at(23, 0)) == 3
+    assert bot.recent_due(cfg, at(16, 0)) == 1     # за 3 часа прошёл только слот 13:17
     assert bot.seconds_to_next_slot(cfg, at(9, 0)) == 17 * 60
-    assert bot.seconds_to_next_slot(cfg, at(22, 0)) == (11 * 60 + 17) * 60  # следующий — 9:17 завтра
+    assert bot.seconds_to_next_slot(cfg, at(19, 0)) == (14 * 60 + 17) * 60  # следующий — 9:17 завтра
 
 
 def _run_loop(cfg, monkeypatch, start, minutes, state=None):
@@ -462,11 +460,11 @@ def _run_loop(cfg, monkeypatch, start, minutes, state=None):
 
 
 def test_loop_posts_on_slots_and_skips_stale(cfg, fake_net, monkeypatch):
-    """Запуск в 13:00, за день ничего не вышло: ночные и 9:17 не догоняются, выходит 12:17, потом 15:17."""
+    """Запуск в 13:00, за день ничего не вышло: 9:17 уже не догоняется (старше 3 ч), выходят 13:17 и 18:17."""
     tz = bot.local_tz()
-    sent = _run_loop(cfg, monkeypatch, datetime(2026, 11, 19, 13, 0, tzinfo=tz), 300)
+    sent = _run_loop(cfg, monkeypatch, datetime(2026, 11, 19, 13, 0, tzinfo=tz), 330)
     times = [t.strftime("%H:%M") for t, _ in sent]
-    assert times == ["13:00", "15:17", "18:17"] or times[:2] == ["13:00", "15:17"]
+    assert times == ["13:17", "18:17"]
 
 
 def test_manual_post_goes_first_once(cfg, fake_net, monkeypatch, tmp_path):
@@ -556,17 +554,17 @@ def test_weekly_quiz(cfg, monkeypatch):
 
 
 def test_formats(cfg, fake_net, monkeypatch):
-    """До 18:00 — молния (короткий пост), после — один раз «Схема дня» с картинкой."""
+    """Формат по номеру поста за день: Молния → Разбор → Схема дня."""
     bot.CONFIG = cfg
-    tz = bot.local_tz()
-    clock = {"t": datetime(2026, 11, 26, 12, 20, tzinfo=tz)}
-    monkeypatch.setattr(bot, "local_now", lambda: clock["t"])
-    state = {}
+    state = {"posted": []}
     assert bot.pick_format(state) == "flash"
-    clock["t"] = datetime(2026, 11, 26, 18, 20, tzinfo=tz)
+    monkeypatch.setattr(bot, "today_stats", lambda st: Counter({"WORLD": 1}))
+    assert bot.pick_format(state) == "full"
+    monkeypatch.setattr(bot, "today_stats", lambda st: Counter({"WORLD": 1, "CIS": 1}))
     assert bot.pick_format(state) == "featured"
-    state["featured_day"] = "2026-11-26"
-    assert bot.pick_format(state) == "flash"
+    full = bot.build_full(cfg, {"title": "T", "what_happened": "W", "says": "S", "trap": "X", "flags": ["F"], "todo": ["D"],
+                                "location": "Кыргызстан", "flag": "🇰🇬"}, "CIS", None)
+    assert full.startswith("🔎 <b>РАЗБОР</b>") and "❌ F" in full and "✅ D" in full and "<b>Что случилось:</b> W" in full
     data = {"location": "Украина", "flag": "🇺🇦", "country_tag": "Украина", "scheme": "phishing", "emoji": "🚓",
             "title": "Штраф за ПДД в Telegram", "what": "Приходит <b>уведомление</b> со ссылкой", "trap": "Ссылка поддельная",
             "do": "Проверь штраф в официальном приложении"}

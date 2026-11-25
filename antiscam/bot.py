@@ -706,6 +706,15 @@ FLASH_FIELDS = """"emoji": "один эмодзи по теме: 🚗 📱 💳 
 "do": "главный совет — одна фраза до 90 символов, начинается с глагола («Не жми на ссылку…»)",
 "ky": \"\""""
 
+FULL_FIELDS = """"emoji": "один эмодзи по теме: 🚗 📱 💳 📦 🏦 💬 и т.п.",
+"title": "заголовок-вердикт до 70 символов: что приходит + «— это обман»",
+"what_happened": "что случилось — 2–3 коротких предложения, до 280 символов",
+"says": "что пишут или говорят мошенники — 1–2 фразы от их лица, до 160 символов, без кавычек",
+"trap": "в чём подвох — 2–3 коротких предложения, до 280 символов, без терминов",
+"flags": ["3 признака обмана до 60 символов: «Просят код из SMS»"],
+"todo": ["3 действия до 60 символов, каждое начинается с глагола"],
+"ky": \"\""""
+
 SIMPLE_FIELDS = """"emoji": "один эмодзи по теме: 🚗 📱 💳 📦 🏦 💬 и т.п.",
 "title": "заголовок-вердикт до 70 символов: что приходит + «— это обман», например «Пишут, что поцарапали машину, и шлют ссылку — это обман»",
 "says": "что пишут или говорят мошенники — 1–2 фразы от их лица, как в настоящем сообщении, до 160 символов, без кавычек",
@@ -717,7 +726,7 @@ SIMPLE_FIELDS = """"emoji": "один эмодзи по теме: 🚗 📱 💳
 # Слова, которых не должно быть в постах: читателю они непонятны (проверка после ИИ)
 HARD_WORDS = ("фишинг", "вредонос", "верификац", "компрометац", "социальн инженер", "злоумышленник", "транзакц",
               "аутентификац", "авторизац", "мессенджер-бот", "скам", "кибер", "персональные данные", "реквизит")
-TEXT_KEYS = ("title", "says", "trap", "todo", "what", "do", "for_us")
+TEXT_KEYS = ("title", "says", "trap", "todo", "what", "do", "for_us", "what_happened", "flags")
 
 
 def readability_issues(data, max_words=14):
@@ -752,7 +761,7 @@ def llm_simplify(data, issues):
 
 def llm_write_story(story, category, cfg):
     abroad = category != "CIS" and FORMAT != "flash"
-    body = FLASH_FIELDS if FORMAT == "flash" else SIMPLE_FIELDS
+    body = {"flash": FLASH_FIELDS, "full": FULL_FIELDS}.get(FORMAT, SIMPLE_FIELDS)
     shot = SHOT_FIELD + ",\n" if FORMAT == "featured" else ""
     scheme_keys = " | ".join(cfg.get("schemes") or {"other": None})
     prompt = f"""Сделай разбор истории [{story['id']}]. Материал может быть на любом языке — пиши только по-русски.
@@ -896,6 +905,35 @@ def build_simple(cfg, data, category, item=None):
     return "\n\n".join(p for p in parts if p.strip())
 
 
+def build_full(cfg, data, category, item=None):
+    """«🔎 Разбор»: подробнее Схемы дня, но тем же простым языком."""
+    d = _d(cfg)
+    flag, location = _place(data, category)
+    emoji = (data.get("emoji") or "⚠️").strip()[:4]
+    parts = ["🔎 <b>РАЗБОР</b>", f"📍 <b>{flag} {d(location)}</b>", f"{emoji} <b>{d(data.get('title'))}</b>"]
+    if data.get("what_happened"):
+        parts.append(f"<b>Что случилось:</b> {d(data['what_happened'])}")
+    if data.get("says"):
+        parts.append(f"<b>Что пишут:</b> «{d(data['says'].strip('«»\" '))}»")
+    if data.get("trap"):
+        parts.append(f"<b>В чём подвох:</b> {d(data['trap'])}")
+    flags = [f for f in data.get("flags", []) if f][:3]
+    if flags:
+        parts.append("<b>Как узнать обман:</b>\n" + "\n".join(f"❌ {d(f)}" for f in flags))
+    todo = [t for t in data.get("todo", []) if t][:3]
+    if todo:
+        parts.append("<b>Что делать:</b>\n" + "\n".join(f"✅ {d(t)}" for t in todo))
+    if category == "WORLD" and data.get("for_us"):
+        parts.append(f"🌍 <b>У нас:</b> {d(data['for_us'])}")
+    if data.get("ky"):
+        parts.append(f"🇰🇬 <i>{d(data['ky'])}</i>")
+    if item:
+        parts.append(f"📰 Источник: {source_link(item)}")
+    parts += [rule_line(cfg), SHARE_LINE,
+              footer(cfg, category, data.get("country_tag", ""), scheme_key(cfg, data.get("scheme")))]
+    return "\n\n".join(p for p in parts if p.strip())
+
+
 def build_flash(cfg, data, category, item=None):
     """«⚡ Молния» — шпаргалка: понятно за 5 секунд."""
     d = _d(cfg)
@@ -1004,6 +1042,8 @@ def make_story(cfg, cands, category, mix=(Counter(), Counter())):
     extra = [c for c in chosen if c is not story and similar(c["norm"], story["norm"])]
     if FORMAT == "flash":
         text = build_flash(cfg, data, category, item=story)
+    elif FORMAT == "full":
+        text = build_full(cfg, data, category, item=story)
     else:
         text = build_simple(cfg, data, category, item=story)
         if FORMAT == "featured":
@@ -1247,17 +1287,16 @@ def is_silent(category):
 
 
 def pick_format(state):
-    """featured — первый пост после formats.featured_from (по умолчанию 18:00), если сегодня «Схемы дня» ещё не было."""
+    """Формат по номеру поста за день: formats.sequence, например [flash, full, featured] —
+    Молния, Разбор, Схема дня. Если форматы выключены — обычный разбор."""
     f = CONFIG.get("formats") or {}
     if not f.get("enabled", True):
         return "full"
     if env("FORMAT") in ("featured", "flash", "full"):  # принудительно (для проверки)
         return env("FORMAT")
-    now = local_now()
-    hh, mm = (int(x) for x in str(f.get("featured_from", "18:00")).split(":"))
-    if (now.hour, now.minute) >= (hh, mm) and state.get("featured_day") != now.date().isoformat():
-        return "featured"
-    return "flash"
+    seq = f.get("sequence") or ["flash", "full", "featured"]
+    n = sum(today_stats(state).values())
+    return seq[n] if n < len(seq) else "flash"
 
 
 def render_shot(shot, variant="flags", footer_text="Пример сообщения · ссылки обезврежены"):
