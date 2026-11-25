@@ -1,6 +1,6 @@
 # 🎬 Ролики к постам antiscam
 
-Workflow **Antiscam video** (`.github/workflows/antiscam-video.yml`) раз в 5 дней (`video.every_days`) выбирает лучший пост канала за этот период — выбор делает Claude: понятная схема, касается многих, ясный урок, приоритет СНГ — и делает по нему вертикальное видео 1080×1920 на 30–40 секунд:
+Workflow **Antiscam video** (`.github/workflows/antiscam-video.yml`) раз в 3 дня (`video.every_days`) выбирает лучший пост канала за этот период — выбор делает Claude: понятная схема, касается многих, ясный урок, приоритет СНГ — и делает по нему вертикальное видео 1080×1920 на 30–40 секунд:
 
 1. **Сценарий** — Claude превращает пост в 6–8 реплик и раскладывает их по готовым сценам (`build.py`).
 2. **Озвучка** — голос ElevenLabs: секрет `ELEVENLABS_API_KEY`, голос — `video.voice_id` в `antiscam/config.yaml` (Multilingual v2, stability 0.5, similarity 0.75, style 0). Без ключа — бесплатный голос Piper.
