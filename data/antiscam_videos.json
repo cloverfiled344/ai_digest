@@ -4,9 +4,11 @@
   "title": "Warning about SMS messages impersonating NAPAS with various scam scenarios.",
   "voice": "elevenlabs",
   "ts": "2026-11-25T00:53:24.946093+00:00",
-  "status": "pending",
+  "status": "published",
   "file_id": "BAACAgIAAxkDAAMFawYxg3mHIoOWdiixNFFnwB4sKQYAAu2vAAIatzBI_7s85kJGpUQ9BA",
   "caption": "🎬 Warning about SMS messages impersonating NAPAS with various scam scenarios.\n\nВо Вьетнаме людям рассылают смс от имени платёжной организации. Они пугают блокировкой счёта и торопят перейти по ссылке или назвать данные карты. Не открывай такие ссылки, не сообщай коды и звони в банк по номеру на карте. Подобные смс знакомы и у нас.\n\n👆 Полный разбор схемы — в посте выше",
-  "reply_to": 61
+  "reply_to": 61,
+  "channel_message_id": 63,
+  "decided_at": "2026-11-25T05:58:57.274877+00:00"
  }
 }
