@@ -44,10 +44,11 @@ PROMPT = """Ты сценарист коротких вертикальных р
 6. contact — кто пишет в чате (обычное имя, например «Айбек», или роль: «Служба банка», «Курьер»). caller — кто звонит, если есть звонок.
 7. ig_caption — подпись для Instagram: 2–3 коротких абзаца (что за схема, главный признак, что делать) + 5 хэштегов на русском. До 900 символов.
 8. threads_text — короткая версия для Threads: 2–3 предложения, до 380 символов, без хэштегов и ссылок.
+10. tg — сжатая версия поста для подписи под роликом в Telegram (лимит подписи 1024 символа): {{"title": "заголовок до 80 символов", "how": "как работает схема, 2 предложения, до 280 символов", "flags": ["3 признака обмана, до 60 символов каждый"], "todo": ["2 действия, до 90 символов каждое"]}}. Только факты из поста.
 9. ky — одна фраза-предупреждение на кыргызском (до 80 символов) или пустая строка, если не уверен в переводе.
 
 Ответь вызовом инструмента scenario с полями:
-{{"title_lines": ["...", "..."], "contact": "...", "caller": "...", "lines": [{{"scene": "hook", "text": "..."}}, ...], "ig_caption": "...", "threads_text": "...", "ky": "..."}}
+{{"title_lines": ["...", "..."], "contact": "...", "caller": "...", "lines": [{{"scene": "hook", "text": "..."}}, ...], "ig_caption": "...", "threads_text": "...", "ky": "...", "tg": {{"title": "...", "how": "...", "flags": [...], "todo": [...]}}}}
 
 Пост:
 {post}"""
@@ -71,7 +72,8 @@ def ask_claude(prompt):
             "input_schema": {"type": "object", "properties": {
                 "title_lines": {"type": "array", "items": {"type": "string"}}, "contact": {"type": "string"},
                 "caller": {"type": "string"}, "lines": {"type": "array", "items": {"type": "object"}},
-                "ig_caption": {"type": "string"}, "threads_text": {"type": "string"}, "ky": {"type": "string"}},
+                "ig_caption": {"type": "string"}, "threads_text": {"type": "string"}, "ky": {"type": "string"},
+                "tg": {"type": "object"}},
                 "required": ["title_lines", "lines", "ig_caption", "threads_text"]}}
     last = None
     for attempt in range(3):
@@ -205,7 +207,8 @@ def main(post_path, out_dir):
     extra = socials_text(cfg)
     meta = {"post_id": post.get("id"), "title": post.get("title"), "scenario": scenario,
             "ig_caption": (str(sc.get("ig_caption") or "")[:1800] + ("\n\n" + extra if extra else "")).strip(),
-            "threads_text": str(sc.get("threads_text") or "")[:420].strip(), "ky": str(sc.get("ky") or "")[:120],
+            "threads_text": str(sc.get("threads_text") or "")[:420].strip(),
+            "tg": sc.get("tg") if isinstance(sc.get("tg"), dict) else {}, "ky": str(sc.get("ky") or "")[:120],
             "voice": json.load(open(os.path.join(HERE, "script.json"), encoding="utf-8")).get("voice")}
     with open(os.path.join(out_dir, "meta.json"), "w", encoding="utf-8") as f:
         json.dump(meta, f, ensure_ascii=False, indent=1)

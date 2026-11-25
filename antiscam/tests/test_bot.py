@@ -485,7 +485,7 @@ def test_video_approval_publishes_reply(cfg, monkeypatch):
     bot.CONFIG = dict(cfg, video={"admin_chat_id": "42"})
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:abc")
     monkeypatch.setenv("TELEGRAM_CHAT_ID", "-100555")
-    bot.save_videos({"p1": {"status": "pending", "file_id": "FILE", "caption": "Короткая версия", "reply_to": 77},
+    bot.save_videos({"p1": {"status": "pending", "file_id": "FILE", "caption": "<b>Пост</b> целиком", "replace": 77},
                      "p2": {"status": "pending", "file_id": "F2", "caption": "x"}})
     calls = []
 
@@ -509,7 +509,9 @@ def test_video_approval_publishes_reply(cfg, monkeypatch):
     assert v["p1"]["status"] == "published" and v["p1"]["channel_message_id"] == 88
     assert v["p2"]["status"] == "skipped" and state["tg_offset"] == 13
     sv = next(j for m, j in calls if m == "sendVideo")
-    assert sv["video"] == "FILE" and sv["reply_parameters"]["message_id"] == 77 and sv["chat_id"] == "-100555"
+    assert sv["video"] == "FILE" and "reply_parameters" not in sv and sv["chat_id"] == "-100555" and sv["parse_mode"] == "HTML"
+    dm = next(j for m, j in calls if m == "deleteMessage")
+    assert dm["message_id"] == 77                                     # исходный текстовый пост заменён роликом
 
 
 def test_thin_story_skipped(cfg, fake_net, monkeypatch):

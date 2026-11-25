@@ -74,8 +74,10 @@ def pick(posts, done, v):
     """Лучший пост за период без ролика — выбирает Claude; напоминания (TIP) не берём."""
     cats = set(v.get("categories", ["MANUAL", "CIS", "WORLD"]))
     last = last_video(done)
+    # Telegram даёт боту удалить сообщение только в первые 48 часов, а ролик заменяет исходный пост —
+    # поэтому выбираем из постов не старше video.max_age_hours (по умолчанию 44 ч)
     since = max(last or datetime.min.replace(tzinfo=timezone.utc),
-                datetime.now(timezone.utc) - timedelta(days=v.get("every_days", 5), hours=12)).isoformat()
+                datetime.now(timezone.utc) - timedelta(hours=v.get("max_age_hours", 44))).isoformat()
     cands = [p for p in posts if p["id"] not in done and p.get("category") in cats and p.get("ts", "") >= since]
     log(f"Кандидатов за период: {len(cands)}")
     if len(cands) <= 1:
@@ -112,11 +114,30 @@ def tg(method, **kw):
 
 
 def channel_caption(post, meta):
-    """Подпись под роликом в канале: короткая версия + отсылка к полному разбору (ролик — ответ на пост)."""
-    title = (post.get("title") or "").strip()
-    body = meta.get("threads_text", "").strip()
-    tail = "👆 Полный разбор схемы — в посте выше" if post.get("message_id") else ""
-    return "\n\n".join(x for x in (f"🎬 {title}" if title else "", body, tail) if x)[:1024]
+    """Подпись под роликом — весь пост в одном сообщении (сжатый до лимита Telegram 1024 символа).
+    HTML: место и заголовок жирным, разделы как в обычном посте, хэштеги из исходного поста."""
+    import html as H
+    import re
+    e = lambda x: H.escape(str(x or "").strip())  # noqa: E731
+    src = post.get("text") or ""
+    loc = re.search(r"📍\s*<b>(.*?)</b>", src)
+    tags = " ".join(re.findall(r"(?<!\w)#[\wА-Яа-яЁё_]+", plain(src.split("Источник")[-1] if "Источник" in src else src)))
+    tg = meta.get("tg") or {}
+    title = e(tg.get("title") or post.get("title"))
+    flags = [e(f) for f in (tg.get("flags") or [])[:3] if f]
+    todo = [e(t) for t in (tg.get("todo") or [])[:2] if t]
+    parts = [f"📍 <b>{loc.group(1)}</b>" if loc else "", f"⚠️ <b>{title}</b>",
+             f"<b>Как работает схема</b>\n{e(tg.get('how'))}" if tg.get("how") else e(meta.get("threads_text")),
+             ("<b>🚩 Признаки обмана</b>\n" + "\n".join(f"• {f}" for f in flags)) if flags else "",
+             ("<b>✅ Что делать</b>\n" + "\n".join(f"• {t}" for t in todo)) if todo else "",
+             (src_line.group(0) if (src_line := re.search(r"📰 Источник:[^\n]*", src)) else ""), tags]
+    parts = [p for p in parts if p]
+    visible = lambda ps: len(re.sub(r"<[^>]+>", "", H.unescape("\n\n".join(ps))))  # noqa: E731
+    while visible(parts) > 1000 and len(parts) > 3:  # не влезает — убираем разделы с конца (кроме хэштегов)
+        parts.pop(-2)
+    if "<a " in "".join(parts) and "</a>" not in "".join(parts):
+        parts = [p for p in parts if "<a " not in p]
+    return "\n\n".join(parts)
 
 
 def send_for_review(chat, out_dir, post, meta):
@@ -126,15 +147,16 @@ def send_for_review(chat, out_dir, post, meta):
                            "allowed_updates": ["message", "channel_post", "my_chat_member", "callback_query"]})
     cap = channel_caption(post, meta)
     why = f"\n\n🤔 Почему этот пост: {post['why']}" if post.get("why") else ""
-    head = "🎬 Новый ролик на проверку. Так он выйдет в канале (ответом на исходный пост):\n\n"
+    head = "🎬 Ролик на проверку. После «Опубликовать» в канале выйдет одно сообщение — ролик с этим текстом, а исходный текстовый пост удалится:\n\n"
     keyboard = {"inline_keyboard": [[{"text": "✅ Опубликовать", "callback_data": f"vpub:{post['id']}"},
                                      {"text": "❌ Пропустить", "callback_data": f"vskip:{post['id']}"}]]}
     with open(os.path.join(out_dir, "video.mp4"), "rb") as vf, open(os.path.join(out_dir, "thumb.png"), "rb") as tf:
         data = tg("sendVideo", data={"chat_id": chat, "supports_streaming": "true", "width": 1080, "height": 1920,
-                                     "caption": (head + cap + why)[:1024], "reply_markup": json.dumps(keyboard)},
+                                     "caption": cap, "parse_mode": "HTML", "reply_markup": json.dumps(keyboard)},
                   files={"video": ("video.mp4", vf, "video/mp4"), "cover": ("thumb.png", tf, "image/png")})
     if not data.get("ok"):
         raise SystemExit("Не удалось отправить ролик на проверку")
+    tg("sendMessage", json={"chat_id": chat, "text": head.strip() + why})
     tg("sendMessage", json={"chat_id": chat, "text": "📸 Подпись для Instagram:\n\n" + meta["ig_caption"][:3800]})
     tg("sendMessage", json={"chat_id": chat, "text": "🧵 Текст для Threads:\n\n" + meta["threads_text"]})
     return data["result"]["video"]["file_id"], cap
@@ -181,7 +203,7 @@ def main():
                             "voice": meta["voice"], "ts": datetime.now(timezone.utc).isoformat(),
                             # pending — ждёт кнопки в личке; бот (antiscam --loop) опубликует в канал
                             "status": "pending" if file_id else "not_sent", "file_id": file_id,
-                            "caption": cap, "reply_to": post.get("message_id")}
+                            "caption": cap, "replace": post.get("message_id")}
         # храним 60 последних
         done = dict(sorted(done.items())[-60:])
         os.makedirs(os.path.dirname(VIDEOS), exist_ok=True)
