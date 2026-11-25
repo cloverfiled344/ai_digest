@@ -79,6 +79,7 @@ jobs:
           ADD_KYRGYZ: ${{ vars.ANTISCAM_ADD_KYRGYZ }}
           CATEGORY: ${{ ((inputs.category == 'QUIZ' || inputs.category == 'DIGEST') && 'auto') || inputs.category || 'auto' }}
           GITHUB_TOKEN: ${{ github.token }}   # загрузка картинок в ветку media
+          JINA_API_KEY: ${{ secrets.JINA_API_KEY }}   # читалка статей r.jina.ai (бесплатный ключ — без лимита 401)
           FORMAT: ${{ inputs.format != 'auto' && inputs.format || '' }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
           GIT_PERSIST: "1"               # сохранять память в репозиторий после каждого поста
