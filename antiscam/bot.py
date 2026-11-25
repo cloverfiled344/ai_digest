@@ -861,7 +861,17 @@ def build_story(cfg, data, category, item=None):
     return text
 
 
-SHARE_LINE = "👇 Перешли родителям — пусть тоже знают"
+SHARE_LINE = "{{SHARE}}"  # заменяется на одну из share_lines из config.yaml — по очереди, чтобы не повторяться
+
+
+def fill_share(text, cfg, state):
+    """Подставляет следующую фразу-призыв поделиться (по кругу через все share_lines)."""
+    if SHARE_LINE not in text:
+        return text
+    lines = cfg.get("share_lines") or ["👇 Перешли родителям — пусть тоже знают"]
+    i = state.get("share_idx", 0) % len(lines)
+    state["share_idx"] = i + 1
+    return text.replace(SHARE_LINE, lines[i])
 
 
 def rule_line(cfg):
@@ -1107,6 +1117,14 @@ def make_manual(cfg, state):
 
 def run_once(cfg, state):
     """Публикует следующий пост дня. Возвращает (text, preview, used, meta, category) или None."""
+    result = _run_once(cfg, state)
+    if result:
+        text, *rest = result
+        result = (fill_share(text, cfg, state), *rest)
+    return result
+
+
+def _run_once(cfg, state):
     stats = today_stats(state)
     total = sum(stats.values())
     limit = cfg.get("daily_limit", 15)
