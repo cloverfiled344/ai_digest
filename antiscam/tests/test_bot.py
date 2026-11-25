@@ -524,3 +524,31 @@ def test_thin_story_skipped(cfg, fake_net, monkeypatch):
               "category": "CIS", "norm": "новая уловка", "source": "x"}]
     monkeypatch.setattr(bot, "llm_pick", lambda *a, **k: (cands, []))
     assert bot.make_story(cfg, cands, "CIS") is None
+
+
+def test_weekly_quiz(cfg, monkeypatch):
+    """Воскресенье 19:30: вступление и квизы по разборам недели, один раз в неделю."""
+    bot.CONFIG = cfg
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:abc")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "-100555")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
+    monkeypatch.setattr(bot.time, "sleep", lambda s: None)
+    tz = bot.local_tz()
+    clock = {"t": datetime(2026, 11, 29, 19, 0, tzinfo=tz)}  # воскресенье
+    monkeypatch.setattr(bot, "local_now", lambda: clock["t"])
+    quiz = {"intro": "Проверь себя", "questions": [
+        {"question": "Тебе пишут: это ты на видео?", "options": ["Открыть файл", "Позвонить другу"], "correct": 1, "explanation": "Это вирус"},
+        {"question": "Плохой", "options": ["Один"], "correct": 0},
+        {"question": "Звонит банк и просит код", "options": ["Назвать", "Положить трубку"], "correct": 1, "explanation": "Банк не просит код"}]}
+    monkeypatch.setattr(bot, "ask_llm", lambda prompt: quiz)
+    calls = []
+    monkeypatch.setattr(bot, "tg_call", lambda m, p: calls.append((m, p)) or (200, {"ok": True}))
+    now = bot.now_utc().isoformat()
+    state = {"recent_posts": [{"ts": now, "category": "CIS", "text": f"<b>Разбор {i}</b>"} for i in range(4)]}
+    assert bot.maybe_weekly_quiz(state) is False                 # 19:00 — ещё рано
+    clock["t"] = datetime(2026, 11, 29, 19, 40, tzinfo=tz)
+    assert bot.maybe_weekly_quiz(state) is True
+    polls = [p for m, p in calls if m == "sendPoll"]
+    assert len(polls) == 2 and polls[0]["type"] == "quiz" and polls[0]["correct_option_id"] == 1
+    assert calls[0][0] == "sendMessage" and state["quiz_week"] == "2026-W48"
+    assert bot.maybe_weekly_quiz(state) is False                 # второй раз за неделю — нет

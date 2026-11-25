@@ -10,10 +10,10 @@ on:
   workflow_dispatch:             # кнопка «Run workflow» для ручного запуска
     inputs:
       category:
-        description: "Рубрика (auto — по плану дня)"
+        description: "Рубрика (auto — по плану дня; QUIZ — викторина недели сейчас)"
         type: choice
         default: auto
-        options: [auto, CIS, WORLD]
+        options: [auto, CIS, WORLD, QUIZ]
       dry_run:
         description: "Тест: только показать пост в логе, не отправлять"
         type: boolean
@@ -58,14 +58,16 @@ jobs:
           ANTHROPIC_MODEL: ${{ vars.ANTISCAM_MODEL || 'claude-sonnet-5-5' }}
           BOT_CTA: ${{ vars.ANTISCAM_CTA }}
           ADD_KYRGYZ: ${{ vars.ANTISCAM_ADD_KYRGYZ }}
-          CATEGORY: ${{ inputs.category || 'auto' }}
+          CATEGORY: ${{ (inputs.category == 'QUIZ' && 'auto') || inputs.category || 'auto' }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
           GIT_PERSIST: "1"               # сохранять память в репозиторий после каждого поста
           LOOP_MINUTES: "330"
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.loop }}" = "true" ]; then
+          if [ "${{ inputs.category }}" = "QUIZ" ]; then
+            FORCE=1 python antiscam/bot.py --quiz
+          elif [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.loop }}" = "true" ]; then
             python antiscam/bot.py --loop
           else
             python antiscam/bot.py
