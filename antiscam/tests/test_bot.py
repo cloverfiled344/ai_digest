@@ -96,6 +96,7 @@ def cfg(tmp_path, monkeypatch):
     monkeypatch.setattr(bot, "LLM_ERRORS", [])
     monkeypatch.setattr(bot, "MANUAL_DIR", str(tmp_path / "manual"))
     monkeypatch.setattr(bot, "VIDEOS_PATH", str(tmp_path / "videos.json"))
+    monkeypatch.setattr(bot, "FORMAT", "full")
     for k in ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "ANTHROPIC_API_KEY", "GEMINI_API_KEY",
               "CATEGORY", "DRY_RUN", "BOT_CTA", "ADD_KYRGYZ"):
         monkeypatch.delenv(k, raising=False)
@@ -454,7 +455,7 @@ def _run_loop(cfg, monkeypatch, start, minutes, state=None):
 
     monkeypatch.setattr(bot.time, "sleep", fake_sleep)
     sent = []
-    monkeypatch.setattr(bot, "send_post", lambda text, preview=None, silent=False, state=None:
+    monkeypatch.setattr(bot, "send_post", lambda text, preview=None, silent=False, state=None, large=False:
                         sent.append((clock["t"], text)) or True)
     bot.loop(dry=False)
     return sent
@@ -552,3 +553,43 @@ def test_weekly_quiz(cfg, monkeypatch):
     assert len(polls) == 2 and polls[0]["type"] == "quiz" and polls[0]["correct_option_id"] == 1
     assert calls[0][0] == "sendMessage" and state["quiz_week"] == "2026-W48"
     assert bot.maybe_weekly_quiz(state) is False                 # второй раз за неделю — нет
+
+
+def test_formats(cfg, fake_net, monkeypatch):
+    """До 18:00 — молния (короткий пост), после — один раз «Схема дня» с картинкой."""
+    bot.CONFIG = cfg
+    tz = bot.local_tz()
+    clock = {"t": datetime(2026, 11, 26, 12, 20, tzinfo=tz)}
+    monkeypatch.setattr(bot, "local_now", lambda: clock["t"])
+    state = {}
+    assert bot.pick_format(state) == "flash"
+    clock["t"] = datetime(2026, 11, 26, 18, 20, tzinfo=tz)
+    assert bot.pick_format(state) == "featured"
+    state["featured_day"] = "2026-11-26"
+    assert bot.pick_format(state) == "flash"
+    data = {"location": "Украина", "flag": "🇺🇦", "country_tag": "Украина", "scheme": "phishing",
+            "title": "Фейковые штрафы за ПДД", "summary": "Приходит <b>уведомление</b> со ссылкой.", "main_flag": "Штрафы не шлют в мессенджер."}
+    item = {"link": "https://informator.ua/1", "source": "informator.ua"}
+    t = bot.build_flash(cfg, data, "WORLD", item)
+    assert t.startswith("⚡ <b>Молния · 🇺🇦 Украина</b>") and "#молния" in t and "&lt;b&gt;" in t
+    assert "🚩 <b>Главный признак:</b>" in t and bot.visible_len(t) < 700
+
+
+def test_weekly_digest(cfg, monkeypatch):
+    bot.CONFIG = cfg
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:abc")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "-100555")
+    tz = bot.local_tz()
+    monkeypatch.setattr(bot, "local_now", lambda: datetime(2026, 11, 29, 19, 5, tzinfo=tz))
+    now = bot.now_utc().isoformat()
+    state = {"recent_posts": [{"id": f"p{i}", "ts": now, "category": "CIS", "text": f"Разбор {i}", "message_id": 60 + i}
+                              for i in range(5)]}
+    monkeypatch.setattr(bot, "ask_llm", lambda p: {"items": [{"id": f"p{i}", "emoji": "📱", "name": f"Схема {i}", "line": "суть"}
+                                                            for i in range(5)] + [{"id": "чужой"}]})
+    calls = []
+    monkeypatch.setattr(bot, "tg_call", lambda m, p: calls.append((m, p)) or (200, {"ok": True}))
+    assert bot.maybe_weekly_digest(state) is True
+    text = calls[0][1]["text"]
+    assert text.startswith("🗓 <b>Схемы недели: 5 главных</b>") and "https://t.me/official_bait_news/62" in text
+    assert "19:30" in text and state["digest_week"] == "2026-W48"
+    assert bot.maybe_weekly_digest(state) is False

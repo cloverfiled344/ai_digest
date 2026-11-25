@@ -11,3 +11,6 @@ antiscam/video/public/timeline.json
 antiscam/video/public/scenario.json
 antiscam/video/script.json
 out_video/
+
+antiscam/video/public/shot.json
+out_media/
