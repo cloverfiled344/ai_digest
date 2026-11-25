@@ -1209,6 +1209,12 @@ def loop(dry):
         now = local_now()
         git_refresh()
         state = load_state()
+        try:  # нажатия кнопок под роликами — сразу при старте и в каждой итерации, не только во сне
+            if poll_approvals(state):
+                save_state(state)
+                git_persist()
+        except (SystemExit, Exception) as ex:
+            log(f"Проверка одобрений: {ex}")
         posted = sum(today_stats(state).values())
         due = min(due_count(cfg, now), posted + recent_due(cfg, now))  # старые пропуски не догоняем
         log(f"[{now:%H:%M}] опубликовано сегодня {posted}, по плану сейчас {due} (лимит {limit})")
@@ -1258,6 +1264,11 @@ def main(argv):
 
     if "--loop" in argv:
         return loop(dry)
+    if "--approvals" in argv:  # только обработать кнопки под роликами
+        state = load_state()
+        if poll_approvals(state):
+            save_state(state)
+        return
     post_one(load_state(), dry)
 
 
