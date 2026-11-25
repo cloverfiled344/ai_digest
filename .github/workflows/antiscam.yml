@@ -15,10 +15,10 @@ on:
         default: auto
         options: [auto, CIS, WORLD, QUIZ, DIGEST, FAKE_OR_REAL]
       format:
-        description: "Формат поста (auto — по времени: после 18:00 «Схема дня», иначе «Молния»)"
+        description: "Формат поста (auto — по порядку за день: Молния, Разбор, Схема дня)"
         type: choice
         default: auto
-        options: [auto, featured, flash]
+        options: [auto, flash, full, featured]
       dry_run:
         description: "Тест: только показать пост в логе, не отправлять"
         type: boolean
