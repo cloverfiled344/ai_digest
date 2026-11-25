@@ -1597,11 +1597,50 @@
    "counted": true,
    "scheme": "phishing",
    "country": "Индия"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMikwFBVV95cUxNd0p3elE0M3FkNXJpckktNTdmNkVWc2hSbFdFdklvbU1Uc3FScldhY09RclIxblJDZEVUaWFhN1NmVUdQR0h2aG5WYTVXbmZvSmJwYXZ3cVkwZHZ6eXNIdGNCeU44ZzdrYVhNb2o1Ym5DZS14Qld3OWFldnV5UjFxc21FaEN2OHdZM1RneDliazhBQ1k?oc=5",
+   "title": "Warning about SMS messages impersonating NAPAS with various scam scenarios.",
+   "ts": "2026-11-25T00:18:03.730510+00:00",
+   "date": "2026-11-25",
+   "category": "WORLD",
+   "counted": true,
+   "scheme": "bank_call",
+   "country": "Вьетнам"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMikwFBVV95cUxNd0p3elE0M3FkNXJpckktNTdmNkVWc2hSbFdFdklvbU1Uc3FScldhY09RclIxblJDZEVUaWFhN1NmVUdQR0h2aG5WYTVXbmZvSmJwYXZ3cVkwZHZ6eXNIdGNCeU44ZzdrYVhNb2o1Ym5DZS14Qld3OWFldnV5UjFxc21FaEN2OHdZM1RneDliazhBQ1k?oc=5",
+   "title": "Warning about SMS messages impersonating NAPAS with various scam scenarios.",
+   "ts": "2026-11-25T00:18:03.730510+00:00",
+   "date": "2026-11-25",
+   "category": "WORLD",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMikwFBVV95cUxNd0p3elE0M3FkNXJpckktNTdmNkVWc2hSbFdFdklvbU1Uc3FScldhY09RclIxblJDZEVUaWFhN1NmVUdQR0h2aG5WYTVXbmZvSmJwYXZ3cVkwZHZ6eXNIdGNCeU44ZzdrYVhNb2o1Ym5DZS14Qld3OWFldnV5UjFxc21FaEN2OHdZM1RneDliazhBQ1k?oc=5",
+   "title": "Warning about SMS messages impersonating NAPAS with various scam scenarios.",
+   "ts": "2026-11-25T00:18:03.730510+00:00",
+   "date": "2026-11-25",
+   "category": "WORLD",
+   "counted": false
   }
  ],
  "evergreen_index": 1,
  "chat_id": -1004322457915,
  "manual_done": [
   "001-eto-ty-na-video.yaml"
+ ],
+ "recent_posts": [
+  {
+   "id": "20261125-061803",
+   "ts": "2026-11-25T00:18:03.730573+00:00",
+   "category": "WORLD",
+   "title": "Warning about SMS messages impersonating NAPAS with various scam scenarios.",
+   "link": "https://news.google.com/rss/articles/CBMikwFBVV95cUxNd0p3elE0M3FkNXJpckktNTdmNkVWc2hSbFdFdklvbU1Uc3FScldhY09RclIxblJDZEVUaWFhN1NmVUdQR0h2aG5WYTVXbmZvSmJwYXZ3cVkwZHZ6eXNIdGNCeU44ZzdrYVhNb2o1Ym5DZS14Qld3OWFldnV5UjFxc21FaEN2OHdZM1RneDliazhBQ1k?oc=5",
+   "scheme": "bank_call",
+   "country": "Вьетнам",
+   "text": "📍 <b>🇻🇳 Вьетнам</b>\n\n⚠️ <b>Вьетнам: SMS от имени платёжной организации NAPAS оказались обманом</b>\n\n<b>Что случилось</b>\nВо Вьетнаме предупредили о SMS-сообщениях, которые рассылают от имени платёжной организации NAPAS. Мошенники используют для этого несколько разных сценариев. Подробностей в материале нет.\n\n<b>Как работает схема</b>\nМошенники отправляют SMS и называют себя известной платёжной организацией. Так сообщение выглядит официальным, и ему легче поверить. Сценариев несколько, но в материале они не описаны. Обычно в таких схемах давят на страх и срочность, чтобы человек не успел подумать.\n\n<b>🚩 Признаки обмана</b>\n• SMS пришло от имени организации, с которой вы не работаете напрямую\n• В сообщении торопят и требуют срочно что-то сделать\n• Просят перейти по ссылке, позвонить на незнакомый номер или назвать данные карты\n• Сообщение пугает блокировкой счёта или проблемой с платежом\n\n<b>✅ Как защититься</b>\n• Не переходите по ссылкам из таких SMS и не перезванивайте на указанные в них номера. Не сообщайте коды из SMS и данные карты.\n• Если сомневаетесь, позвоните в свой банк по номеру на обратной стороне карты и спросите, правда ли это.\n• Если вы уже передали данные или перевели деньги, сразу позвоните в банк и заблокируйте карту. Затем обратитесь в полицию по номеру 102.\n\n<b>🌍 Может ли это случиться у нас?</b>\nПодобные SMS «от имени банка или платёжной системы» знакомы и у нас. Они могут прийти от имени банка, мобильного кошелька или оператора связи и торопить вас с проверкой счёта.\n\n📰 Источник: <a href=\"https://news.google.com/rss/articles/CBMikwFBVV95cUxNd0p3elE0M3FkNXJpckktNTdmNkVWc2hSbFdFdklvbU1Uc3FScldhY09RclIxblJDZEVUaWFhN1NmVUdQR0h2aG5WYTVXbmZvSmJwYXZ3cVkwZHZ6eXNIdGNCeU44ZzdrYVhNb2o1Ym5DZS14Qld3OWFldnV5UjFxc21FaEN2OHdZM1RneDliazhBQ1k?oc=5\">Vietnam.vn</a>\n\n#звонок_из_банка #разбор #мир #Вьетнам",
+   "message_id": 61
+  }
  ]
 }
