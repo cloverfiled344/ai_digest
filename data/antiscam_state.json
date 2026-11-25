@@ -1623,6 +1623,32 @@
    "date": "2026-11-25",
    "category": "WORLD",
    "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMirAFBVV95cUxPM1E2ZHpjZDlwejJESklSbHh1b004ZE5aYk1tYjFoNEZfWGhxRmdTSXM0VjcyalRFYkhYeVFMMlV0QnUxS2tDM3JobUVuQXBfbmFYZ2VBT1dJc0NSWDdnTW5sTDFZSkFnMUFEdkNkVmxUS1JaRDVKdDdfYUE0emxQcDJIcmFZN2pWVUNSTElSNXg2VlpkVnJzOVYtTkpFMm5tU2VPRGlmR3V6UXJO?oc=5",
+   "title": "Мошенники придумали новую схему обмана с самозапретом на кредиты через «Госуслуги",
+   "ts": "2026-11-25T03:19:28.396276+00:00",
+   "date": "2026-11-25",
+   "category": "CIS",
+   "counted": true,
+   "scheme": "bank_call",
+   "country": "Россия"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMirwFBVV95cUxNYzFRYzJraUhGbHVzZjlJNjFkQWZ0UFpkbzlqWE5wcWJ3ZDFiZ3FRRDZ3dWkybGdIOUtxN0JwTUhHSVZFOWFFYk5pY2RNQ1R6azFmS19PWHVLTnAyNnBQdUZ4MmxuNDZLMVM0VHNnVjg3aXdTVTlKQkx3RlRscUozenBMUUdoSW1nMFpLaHluR1BJRzdxYkoyWGd2LVctRXJrNXV1SjdNNVIzY2lCN3Fn?oc=5",
+   "title": "Сдавал несуществующие квартиры: в Алматы раскрыли 32 эпизода мошенничества",
+   "ts": "2026-11-25T03:19:28.396276+00:00",
+   "date": "2026-11-25",
+   "category": "CIS",
+   "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMirAFBVV95cUxObnFMTWlNTnQ2OTJhamhQYkJvSE5xWEZVTGFqOGZuODRUSG9NV2Y3R09RZzQyc3ZZQmtzbVdyMGNmQjdJek9Hak91MDZ3eVpoYWl0ZXRqTWg0WGZQd3JEdW5GWWNiYVpnWEdJMmpybk5neWxXZGd6bWZ2VzNGQjVOYmUxejBYZl90VXExVzUyUkIya2tBbnVBSllkbFcxRHlvR243aFM4alpULVZD?oc=5",
+   "title": "Розыск и задержания: в Алматы и ОАЭ задержаны подозреваемые в крупном мошенничестве",
+   "ts": "2026-11-25T03:19:28.396276+00:00",
+   "date": "2026-11-25",
+   "category": "CIS",
+   "counted": false
   }
  ],
  "evergreen_index": 1,
@@ -1641,6 +1667,17 @@
    "country": "Вьетнам",
    "text": "📍 <b>🇻🇳 Вьетнам</b>\n\n⚠️ <b>Вьетнам: SMS от имени платёжной организации NAPAS оказались обманом</b>\n\n<b>Что случилось</b>\nВо Вьетнаме предупредили о SMS-сообщениях, которые рассылают от имени платёжной организации NAPAS. Мошенники используют для этого несколько разных сценариев. Подробностей в материале нет.\n\n<b>Как работает схема</b>\nМошенники отправляют SMS и называют себя известной платёжной организацией. Так сообщение выглядит официальным, и ему легче поверить. Сценариев несколько, но в материале они не описаны. Обычно в таких схемах давят на страх и срочность, чтобы человек не успел подумать.\n\n<b>🚩 Признаки обмана</b>\n• SMS пришло от имени организации, с которой вы не работаете напрямую\n• В сообщении торопят и требуют срочно что-то сделать\n• Просят перейти по ссылке, позвонить на незнакомый номер или назвать данные карты\n• Сообщение пугает блокировкой счёта или проблемой с платежом\n\n<b>✅ Как защититься</b>\n• Не переходите по ссылкам из таких SMS и не перезванивайте на указанные в них номера. Не сообщайте коды из SMS и данные карты.\n• Если сомневаетесь, позвоните в свой банк по номеру на обратной стороне карты и спросите, правда ли это.\n• Если вы уже передали данные или перевели деньги, сразу позвоните в банк и заблокируйте карту. Затем обратитесь в полицию по номеру 102.\n\n<b>🌍 Может ли это случиться у нас?</b>\nПодобные SMS «от имени банка или платёжной системы» знакомы и у нас. Они могут прийти от имени банка, мобильного кошелька или оператора связи и торопить вас с проверкой счёта.\n\n📰 Источник: <a href=\"https://news.google.com/rss/articles/CBMikwFBVV95cUxNd0p3elE0M3FkNXJpckktNTdmNkVWc2hSbFdFdklvbU1Uc3FScldhY09RclIxblJDZEVUaWFhN1NmVUdQR0h2aG5WYTVXbmZvSmJwYXZ3cVkwZHZ6eXNIdGNCeU44ZzdrYVhNb2o1Ym5DZS14Qld3OWFldnV5UjFxc21FaEN2OHdZM1RneDliazhBQ1k?oc=5\">Vietnam.vn</a>\n\n#звонок_из_банка #разбор #мир #Вьетнам",
    "message_id": 61
+  },
+  {
+   "id": "20261125-091928",
+   "ts": "2026-11-25T03:19:28.396370+00:00",
+   "category": "CIS",
+   "title": "Мошенники придумали новую схему обмана с самозапретом на кредиты через «Госуслуги",
+   "link": "https://news.google.com/rss/articles/CBMirAFBVV95cUxPM1E2ZHpjZDlwejJESklSbHh1b004ZE5aYk1tYjFoNEZfWGhxRmdTSXM0VjcyalRFYkhYeVFMMlV0QnUxS2tDM3JobUVuQXBfbmFYZ2VBT1dJc0NSWDdnTW5sTDFZSkFnMUFEdkNkVmxUS1JaRDVKdDdfYUE0emxQcDJIcmFZN2pWVUNSTElSNXg2VlpkVnJzOVYtTkpFMm5tU2VPRGlmR3V6UXJO?oc=5",
+   "scheme": "bank_call",
+   "country": "Россия",
+   "text": "📍 <b>🇷🇺 Россия</b>\n\n⚠️ <b>Новая уловка мошенников: самозапрет на кредиты и «Госуслуги»</b>\n\n<b>Что случилось</b>\nПоявилась новая схема обмана, в которой мошенники используют самозапрет на кредиты и портал «Госуслуги». Подробностей в материале нет, известно только это из заголовка.\n\n<b>Как работает схема</b>\nПодробности схемы в материале не раскрыты. Судя по заголовку, мошенники прикрываются известной услугой самозапрета на кредиты и именем портала «Госуслуги». Обычно в таких случаях людей пугают или торопят, чтобы они сами назвали данные или сделали то, о чём просят. Проверяйте любую «помощь с защитой от кредитов» только через официальный сайт или приложение.\n\n<b>🚩 Признаки обмана</b>\n• Кто-то сам пишет или звонит и говорит от имени «Госуслуг» или другого госоргана\n• Вас торопят: «сделайте срочно, иначе оформят кредит»\n• Просят назвать код из SMS, пароль или данные карты\n• Присылают ссылку, а не предлагают зайти на сайт самостоятельно\n\n<b>✅ Как защититься</b>\n• Не называйте коды из SMS и пароли никому, даже если собеседник представился сотрудником госоргана. Положите трубку и сами зайдите в официальное приложение или на сайт.\n• Самозапрет на кредиты оформляйте только на официальном портале, который открыли сами, а не по ссылке из сообщения.\n• Если уже передали данные или деньги, сразу позвоните в банк по номеру на карте и заблокируйте её. Затем обратитесь в полицию.\n\n📰 Источник: <a href=\"https://news.google.com/rss/articles/CBMirAFBVV95cUxPM1E2ZHpjZDlwejJESklSbHh1b004ZE5aYk1tYjFoNEZfWGhxRmdTSXM0VjcyalRFYkhYeVFMMlV0QnUxS2tDM3JobUVuQXBfbmFYZ2VBT1dJc0NSWDdnTW5sTDFZSkFnMUFEdkNkVmxUS1JaRDVKdDdfYUE0emxQcDJIcmFZN2pWVUNSTElSNXg2VlpkVnJzOVYtTkpFMm5tU2VPRGlmR3V6UXJO?oc=5\">Телеканал ЯПервый</a>\n\n#звонок_из_банка #разбор #СНГ #Россия",
+   "message_id": 62
   }
  ]
 }
