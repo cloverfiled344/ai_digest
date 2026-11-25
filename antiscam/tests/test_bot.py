@@ -598,3 +598,11 @@ def test_weekly_digest(cfg, monkeypatch):
 
 def test_cis_country_check():
     assert bot.is_cis_country("Россия") and bot.is_cis_country(" кыргызстан ") and not bot.is_cis_country("Испания")
+
+
+def test_readability_check():
+    ok = {"title": "SMS о штрафе — это обман", "trap": "Ссылка поддельная. Деньги уйдут мошенникам.", "todo": ["Не жми на ссылку"]}
+    assert bot.readability_issues(ok) == []
+    bad = {"trap": "Это фишинг через вредоносное приложение", "todo": ["Никогда и ни при каких обстоятельствах не сообщайте никому коды из SMS даже если вам звонят из банка"]}
+    issues = bot.readability_issues(bad)
+    assert any("фишинг" in i for i in issues) and any("вредонос" in i for i in issues) and any("длинная" in i for i in issues)

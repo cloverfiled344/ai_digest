@@ -700,18 +700,54 @@ SHOT_FIELD = """"shot": {"contact": "кто пишет жертве (как по
   "flags": [3 выноски-признака: {"msg": номер сообщения с 0, "text": "до 20 символов"}]}"""
 
 FLASH_FIELDS = """"emoji": "один эмодзи по теме: 🚗 📱 💳 📦 🏦 💬 и т.п.",
-"title": "заголовок простыми словами до 60 символов, например «Я задел вашу машину»",
-"what": "что пишут или звонят мошенники — одна фраза до 120 символов",
+"title": "заголовок-вердикт до 60 символов: что приходит + «— это обман», например «SMS о штрафе со ссылкой — это обман»",
+"what": "что именно пишут или говорят мошенники — их фраза-маркер, как в настоящем сообщении, до 120 символов",
 "trap": "в чём обман — одна фраза до 120 символов, без терминов",
 "do": "главный совет — одна фраза до 90 символов, начинается с глагола («Не жми на ссылку…»)",
 "ky": \"\""""
 
 SIMPLE_FIELDS = """"emoji": "один эмодзи по теме: 🚗 📱 💳 📦 🏦 💬 и т.п.",
-"title": "заголовок-крючок до 70 символов, простыми словами, например «Пишут, что поцарапали твою машину? Это обман»",
+"title": "заголовок-вердикт до 70 символов: что приходит + «— это обман», например «Пишут, что поцарапали машину, и шлют ссылку — это обман»",
 "says": "что пишут или говорят мошенники — 1–2 фразы от их лица, как в настоящем сообщении, до 160 символов, без кавычек",
 "trap": "в чём подвох — 2–3 коротких предложения, до 260 символов, без терминов",
 "todo": ["3 действия до 60 символов, каждое начинается с глагола: «Не открывай ссылку»"],
 "ky": \"\""""
+
+
+# Слова, которых не должно быть в постах: читателю они непонятны (проверка после ИИ)
+HARD_WORDS = ("фишинг", "вредонос", "верификац", "компрометац", "социальн инженер", "злоумышленник", "транзакц",
+              "аутентификац", "авторизац", "мессенджер-бот", "скам", "кибер", "персональные данные", "реквизит")
+TEXT_KEYS = ("title", "says", "trap", "todo", "what", "do", "for_us")
+
+
+def readability_issues(data, max_words=14):
+    """Что мешает читать: длинные фразы и сложные слова. Пустой список — всё хорошо."""
+    issues = []
+    for key in TEXT_KEYS:
+        val = data.get(key)
+        for chunk in (val if isinstance(val, list) else [val] if val else []):
+            low = str(chunk).lower()
+            for w in HARD_WORDS:
+                if w in low:
+                    issues.append(f"{key}: слово «{w}…» — замени простым")
+            for sent in re.split(r"(?<=[.!?])\s+", str(chunk)):
+                if len(sent.split()) > max_words:
+                    issues.append(f"{key}: длинная фраза ({len(sent.split())} слов): «{sent[:60]}…»")
+    return issues
+
+
+def llm_simplify(data, issues):
+    """Одна попытка переписать проще: те же поля, исправленные замечания."""
+    keys = [k for k in TEXT_KEYS if data.get(k)]
+    prompt = ("Перепиши эти поля поста ещё проще, как для мамы или подростка: фразы до 12 слов, без терминов.\n"
+              "Замечания:\n- " + "\n- ".join(issues[:8]) + "\n\nВерни JSON с теми же ключами: "
+              + json.dumps({k: data[k] for k in keys}, ensure_ascii=False))
+    fixed = ask_llm(prompt)
+    if isinstance(fixed, dict):
+        for k in keys:
+            if fixed.get(k):
+                data[k] = fixed[k]
+    return data
 
 
 def llm_write_story(story, category, cfg):
@@ -819,6 +855,11 @@ def build_story(cfg, data, category, item=None):
 SHARE_LINE = "👇 Перешли родителям — пусть тоже знают"
 
 
+def rule_line(cfg):
+    """Одно постоянное правило канала в каждом посте (как «Stop · Challenge · Protect» у Take Five)."""
+    return (cfg.get("rule_line") or "").strip()
+
+
 def _d(cfg):
     safe = cfg.get("safe_domains", [])
     return lambda s: esc(defang(s or "", safe))
@@ -849,6 +890,7 @@ def build_simple(cfg, data, category, item=None):
         parts.append(f"🇰🇬 <i>{d(data['ky'])}</i>")
     if item:
         parts.append(f"📰 Источник: {source_link(item)}")
+    parts.append(rule_line(cfg))
     parts.append(SHARE_LINE)
     parts.append(footer(cfg, category, data.get("country_tag", ""), scheme_key(cfg, data.get("scheme"))))
     return "\n\n".join(p for p in parts if p.strip())
@@ -863,7 +905,7 @@ def build_flash(cfg, data, category, item=None):
     for mark, key in (("📩", "what"), ("❌", "trap"), ("✅", "do")):
         if data.get(key):
             lines.append(f"{mark} {d(data[key])}")
-    parts = [f"⚡ <b>Молния · {flag} {d(location)}</b>", "\n".join(lines)]
+    parts = [f"⚡ <b>Молния · {flag} {d(location)}</b>", "\n".join(lines), rule_line(cfg)]
     if data.get("ky"):
         parts.append(f"🇰🇬 <i>{d(data['ky'])}</i>")
     if item:
@@ -940,6 +982,10 @@ def make_story(cfg, cands, category, mix=(Counter(), Counter())):
             if data.get("enough_details") is False:
                 log(f"  [{story['id']}] ИИ: в материале нет описания схемы — пропускаю")
                 continue
+            issues = readability_issues(data)
+            if issues:
+                log(f"  проще: {len(issues)} замечаний — переписываю ({issues[0]})")
+                data = llm_simplify(data, issues)
             meta = {"scheme": scheme_key(cfg, data.get("scheme")), "country": (data.get("country_tag") or "").strip()}
             if meta["country"] and category in ("CIS", "WORLD") and is_cis_country(meta["country"]) != (category == "CIS"):
                 log(f"  [{story['id']}] {meta['country']} — не рубрика «{cname(category)}», пробую следующую историю")

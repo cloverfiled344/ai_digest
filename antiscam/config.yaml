@@ -365,3 +365,6 @@ digest:
   weekday: 6
   time: "19:00"
   channel_username: "official_bait_news"   # для ссылок на посты t.me/<username>/<номер>
+
+# Постоянное правило канала — в конце каждого поста (повторение = запоминание, как «Stop · Challenge · Protect»)
+rule_line: "🛑 Не спеши · 🔍 Проверь сам · 📞 Звони в банк по номеру на карте"
