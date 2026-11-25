@@ -28,7 +28,9 @@ permissions:
 
 concurrency:
   # плановые запуски идут по очереди (один работает, следующий ждёт), ручные — отдельно, чтобы не ждать часами
-  group: antiscam-${{ github.event_name }}
+  # все запуски, которые публикуют по плану (плановые и ручные с loop), идут строго по очереди —
+  # иначе два запуска одновременно публикуют пост в один слот. Отдельно — только тестовые (dry_run).
+  group: antiscam-${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && 'test' || 'publish' }}
   cancel-in-progress: false
 
 jobs:

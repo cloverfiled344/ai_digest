@@ -124,7 +124,7 @@ def fake_net(monkeypatch):
         return FakeResp(b"", status=404)
     monkeypatch.setattr(bot.SESSION, "get", fake_get)
     # ссылки Google News раскрываются в адрес статьи (в проде — googlenewsdecoder)
-    monkeypatch.setattr(bot, "resolve_google_news", lambda url: "https://24.kg/proisshestvija/1")
+    monkeypatch.setattr(bot, "resolve_google_news", lambda url, title="": "https://24.kg/proisshestvija/1")
 
 
 LOCATIONS = [
@@ -515,7 +515,7 @@ def test_thin_story_skipped(cfg, fake_net, monkeypatch):
     """Статью не удалось прочитать — пустой пост «подробностей нет» не публикуется."""
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
     monkeypatch.setattr(bot, "call_anthropic", fake_llm)
-    monkeypatch.setattr(bot, "fetch_article_text", lambda url, limit=3500: "")
+    monkeypatch.setattr(bot, "fetch_article_text", lambda url, limit=3500, title="": "")
     bot.CONFIG = cfg
     cands = [{"id": "n1", "title": "Новая уловка мошенников", "summary": "", "link": "https://x.kg/1",
               "category": "CIS", "norm": "новая уловка", "source": "x"}]

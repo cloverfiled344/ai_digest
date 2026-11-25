@@ -437,21 +437,40 @@ def candidates_for(cands, category, limit=30):
     return [c for c in cands if c["category"] in (category, None)][:limit]
 
 
-def resolve_google_news(url):
-    """Ссылка Google News → настоящая ссылка на статью (иначе текст не прочитать). "" — если не вышло."""
+def resolve_google_news(url, title=""):
+    """Ссылка Google News → настоящая ссылка на статью (иначе текст не прочитать). "" — если не вышло.
+    Сначала googlenewsdecoder, если Google не отдал — ищем ту же новость по заголовку в Bing News."""
     try:
         from googlenewsdecoder import gnewsdecoder
         res = gnewsdecoder(url, interval=None, timeout=10)
-        return res.get("decoded_url", "") if isinstance(res, dict) and res.get("status") else ""
+        if isinstance(res, dict) and res.get("status") and res.get("decoded_url"):
+            return res["decoded_url"]
+        log(f"  (Google News не раскрылся: {str((res or {}).get('message', ''))[:120]})")
     except Exception as ex:
-        log(f"  (не удалось раскрыть ссылку Google News: {type(ex).__name__})")
+        log(f"  (Google News не раскрылся: {type(ex).__name__})")
+    if not title:
         return ""
+    try:  # та же новость в Bing News — там ссылки прямые
+        q = re.sub(r"\s+-\s+[^-]+$", "", title)[:150]  # без « - Название СМИ» в конце
+        r = SESSION.get(f"https://www.bing.com/news/search?q={quote_plus(q)}&format=rss&setlang=ru", timeout=15)
+        feed = feedparser.parse(r.content)
+        want = set(normalize_title(q).split())
+        for e in feed.entries[:5]:
+            got = set(normalize_title(e.get("title", "")).split())
+            if want and len(want & got) / len(want) >= 0.6:
+                link = decode_bing_link(e.get("link", ""))
+                if link and "bing.com" not in link:
+                    log(f"  (нашёл статью через Bing: {domain_of(link)})")
+                    return link
+    except Exception as ex:
+        log(f"  (поиск в Bing не удался: {type(ex).__name__})")
+    return ""
 
 
-def fetch_article_text(url, limit=3500):
+def fetch_article_text(url, limit=3500, title=""):
     """Достаёт основной текст статьи (для точного пересказа). Не страшно, если не вышло."""
     if "news.google.com" in url:
-        url = resolve_google_news(url)
+        url = resolve_google_news(url, title)
         if not url:
             return ""
     try:
@@ -473,7 +492,7 @@ def fetch_article_text(url, limit=3500):
 
 def attach_texts(cands):
     with ThreadPoolExecutor(max_workers=5) as pool:
-        texts = list(pool.map(lambda c: fetch_article_text(c["link"]), cands))
+        texts = list(pool.map(lambda c: fetch_article_text(c["link"], title=c.get("title", "")), cands))
     for c, t in zip(cands, texts):
         c["text"] = t
 
