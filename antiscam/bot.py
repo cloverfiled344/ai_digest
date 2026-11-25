@@ -468,12 +468,40 @@ def resolve_google_news(url, title=""):
     return ""
 
 
+def fetch_via_reader(url, limit=3500):
+    """Запасной способ прочитать статью: сервис r.jina.ai отдаёт текст страницы (в т.ч. с JS и редиректами)."""
+    try:
+        r = SESSION.get("https://r.jina.ai/" + url, timeout=40, headers={"X-Return-Format": "text", "Accept": "text/plain"})
+        if r.status_code != 200:
+            return ""
+        lines = [ln.strip() for ln in r.text.splitlines()]
+        text = "\n".join(ln for ln in lines if len(ln) > 60 and not ln.startswith(("http", "![", "[", "Title:", "URL Source:")))
+        return text[:limit]
+    except Exception:
+        return ""
+
+
 def fetch_article_text(url, limit=3500, title=""):
     """Достаёт основной текст статьи (для точного пересказа). Не страшно, если не вышло."""
+    min_chars = CONFIG.get("min_article_chars", 600)
     if "news.google.com" in url:
-        url = resolve_google_news(url, title)
-        if not url:
-            return ""
+        real = resolve_google_news(url, title)
+        if not real:  # Google не раскрылся и в Bing не нашлось — пусть читалка сама пройдёт по редиректу
+            text = fetch_via_reader(url, limit)
+            if len(text) >= min_chars:
+                log(f"  (прочитал через читалку: {len(text)} симв.)")
+            return text
+        url = real
+    text = _fetch_direct(url, limit)
+    if len(text) < min_chars:
+        alt = fetch_via_reader(url, limit)
+        if len(alt) > len(text):
+            log(f"  (прочитал {domain_of(url)} через читалку: {len(alt)} симв.)")
+            text = alt
+    return text
+
+
+def _fetch_direct(url, limit=3500):
     try:
         r = SESSION.get(url, timeout=15)
         r.raise_for_status()
@@ -823,37 +851,37 @@ def make_story(cfg, cands, category, mix=(Counter(), Counter())):
     chosen, dups = llm_pick(cands, category, cfg, mix)
     if not chosen:
         return None
-    attach_texts(chosen)
     # пустые посты не публикуем: нужен текст статьи (или содержательное описание из ленты),
-    # иначе ИИ напишет «подробностей нет» по одному заголовку
+    # иначе ИИ напишет «подробностей нет» по одному заголовку. Сначала истории, выбранные ИИ,
+    # потом следующие из списка; не больше трёх попыток написать разбор.
     min_chars = cfg.get("min_article_chars", 600)
-    rich = [c for c in chosen if len(c.get("text") or "") >= min_chars or len(c.get("summary") or "") >= min_chars]
-    for c in chosen:
-        if c not in rich:
-            log(f"  [{c['id']}] пропускаю: не удалось прочитать подробности ({len(c.get('text') or '')} симв.)")
-    if not rich:  # у выбранных ИИ историй текст не прочитался — пробуем следующие из списка
-        extra = [c for c in cands if c not in chosen and c not in dups][:8]
-        attach_texts(extra)
-        rich = [c for c in extra if len(c.get("text") or "") >= min_chars][:2]
-        log(f"  запасные истории с текстом: {[c['id'] for c in rich] or 'нет'}")
-    if not rich:
-        return None
-    ordered = sorted(rich, key=lambda c: -len(c.get("text") or ""))
-
+    pool = chosen + [c for c in cands if c not in chosen and c not in dups][:6]
     picked = fallback = None
-    for story in ordered[:2]:  # не больше двух разборов за запуск
-        data = llm_write_story(story, category, cfg)
-        if not data or not data.get("title"):
-            continue
-        if data.get("enough_details") is False:
-            log(f"  [{story['id']}] ИИ: в материале нет описания схемы — пропускаю")
-            continue
-        meta = {"scheme": scheme_key(cfg, data.get("scheme")), "country": (data.get("country_tag") or "").strip()}
-        if not over_limit(cfg, meta, mix):
-            picked = (story, data, meta)
+    writes = 0
+    for batch in (pool[:3], pool[3:]):
+        if picked or writes >= 3 or not batch:
             break
-        log(f"  {meta['country']} / {meta['scheme']}: сегодня уже было достаточно, пробую следующую историю")
-        fallback = fallback or (story, data, meta)
+        attach_texts(batch)
+        rich = [c for c in batch if len(c.get("text") or "") >= min_chars or len(c.get("summary") or "") >= min_chars]
+        for c in batch:
+            if c not in rich:
+                log(f"  [{c['id']}] пропускаю: не удалось прочитать подробности ({len(c.get('text') or '')} симв.)")
+        for story in sorted(rich, key=lambda c: -len(c.get("text") or "")):
+            if writes >= 3:
+                break
+            writes += 1
+            data = llm_write_story(story, category, cfg)
+            if not data or not data.get("title"):
+                continue
+            if data.get("enough_details") is False:
+                log(f"  [{story['id']}] ИИ: в материале нет описания схемы — пропускаю")
+                continue
+            meta = {"scheme": scheme_key(cfg, data.get("scheme")), "country": (data.get("country_tag") or "").strip()}
+            if not over_limit(cfg, meta, mix):
+                picked = (story, data, meta)
+                break
+            log(f"  {meta['country']} / {meta['scheme']}: сегодня уже было достаточно, пробую следующую историю")
+            fallback = fallback or (story, data, meta)
     picked = picked or fallback
     if not picked:
         return None
