@@ -1,0 +1,13 @@
+name: probe2
+on: {push: {branches: [probe2]}}
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          B="https://arctic-shift.photon-reddit.com/api/posts/search?subreddit=SaaS&limit=2"
+          for f in id,title selftext permalink link_flair_text stickied over_18 author created_utc num_comments score; do echo "$f $(curl -s -m 20 -o o -w '%{http_code}' "$B&fields=id,$f") $(head -c 150 o)"; sleep 1; done
+          A=$(( $(date +%s) - 96*3600 )); Z=$(( $(date +%s) - 18*3600 ))
+          echo "range $(curl -s -m 20 -o o -w '%{http_code}' "$B&after=$A&before=$Z&fields=id") $(head -c 200 o)"
+          echo "lim100 $(curl -s -m 20 -o o -w '%{http_code}' "https://arctic-shift.photon-reddit.com/api/posts/search?subreddit=SaaS&limit=100&fields=id") $(head -c 200 o)"
+          echo "cm $(curl -s -m 20 -o o -w '%{http_code}' "https://arctic-shift.photon-reddit.com/api/comments/search?link_id=1y3kev2&limit=100&fields=body,score,parent_id,author") $(head -c 200 o)"
