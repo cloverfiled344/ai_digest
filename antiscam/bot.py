@@ -1187,6 +1187,67 @@ def poll_approvals(state):
     return changed
 
 
+# ───────────────────────── викторина в конце недели ─────────────────────────
+
+QUIZ_PROMPT = """Сделай викторину «Проверь себя» по разборам недели в канале о мошенничестве.
+{n} вопросов. Каждый — короткая жизненная ситуация из разборов ниже («Тебе пишут…», «Звонят из банка и…»)
+и вопрос, что это / что делать. 3–4 варианта ответа, один верный, неверные — правдоподобные.
+Лимиты Telegram: question до 250 символов, каждый вариант до 90, explanation до 190 (почему верно, коротко).
+Разные схемы в разных вопросах. Только по фактам из разборов. По-русски, на «ты».
+intro — 1–2 предложения перед викториной (до 300 символов), без хэштегов.
+Верни JSON: {{"intro": "...", "questions": [{{"question": "...", "options": ["...", "..."], "correct": 0, "explanation": "..."}}]}}
+
+Разборы недели:
+{posts}"""
+
+
+def maybe_weekly_quiz(state, dry=False):
+    """В quiz.weekday после quiz.time — викторина по постам недели (один раз в неделю). True — опубликована."""
+    q = CONFIG.get("quiz") or {}
+    if not q.get("enabled", True):
+        return False
+    now = local_now()
+    hh, mm = (int(x) for x in str(q.get("time", "19:30")).split(":"))
+    force = env_flag("FORCE")
+    if not force and (now.weekday() != q.get("weekday", 6) or (now.hour, now.minute) < (hh, mm) or now.hour >= 23):
+        return False
+    week = now.strftime("%G-W%V")
+    if state.get("quiz_week") == week and not force:
+        return False
+    since = (now_utc() - timedelta(days=7)).isoformat()
+    posts = [p for p in state.get("recent_posts", []) if p.get("ts", "") >= since and p.get("category") != "TIP"]
+    if len(posts) < 3:
+        log("Викторина: мало разборов за неделю — пропускаю")
+        state["quiz_week"] = week
+        return True
+    plain = lambda t: html.unescape(re.sub(r"<[^>]+>", "", t or ""))  # noqa: E731
+    listing = "\n\n---\n\n".join(plain(p["text"])[:1200] for p in posts[-25:])
+    data = ask_llm(QUIZ_PROMPT.format(n=q.get("questions", 3), posts=listing))
+    if not data or not data.get("questions"):
+        log("Викторина: ИИ не ответил — попробую позже")
+        return False
+    chat = chat_candidates(state)[-1] if chat_candidates(state) else env("TELEGRAM_CHAT_ID")
+    intro = "🧠 <b>Проверь себя: схемы недели</b>\n\n" + esc((data.get("intro") or "")[:300])
+    if dry:
+        log("Тестовый режим, викторина:\n" + json.dumps(data, ensure_ascii=False, indent=1))
+        return False
+    tg_call("sendMessage", {"chat_id": chat, "text": intro, "parse_mode": "HTML"})
+    sent = 0
+    for item in data["questions"][: q.get("questions", 3)]:
+        opts = [str(o)[:100] for o in (item.get("options") or [])][:10]
+        correct = item.get("correct", 0)
+        if len(opts) < 2 or not isinstance(correct, int) or not 0 <= correct < len(opts):
+            continue
+        _, d = tg_call("sendPoll", {"chat_id": chat, "question": str(item.get("question", ""))[:300],
+                                    "options": [{"text": o} for o in opts], "type": "quiz", "is_anonymous": True,
+                                    "correct_option_id": correct, "explanation": str(item.get("explanation", ""))[:200]})
+        sent += bool(d.get("ok"))
+        time.sleep(2)
+    log(f"Викторина недели: {sent} вопрос(ов)")
+    state["quiz_week"] = week
+    return True
+
+
 def nap(seconds, state_holder):
     """Сон с проверкой одобрений роликов каждые 2 минуты."""
     end = time.time() + seconds
@@ -1198,6 +1259,9 @@ def nap(seconds, state_holder):
         try:
             if load_videos() or os.path.exists(VIDEOS_PATH):
                 git_refresh()  # новые ролики на одобрение приходят коммитом из workflow «Antiscam video»
+            if maybe_weekly_quiz(state_holder["state"]):
+                save_state(state_holder["state"])
+                git_persist()
             if poll_approvals(state_holder["state"]):
                 save_state(state_holder["state"])
                 git_persist()
@@ -1268,6 +1332,9 @@ def loop(dry):
         git_refresh()
         state = load_state()
         try:  # нажатия кнопок под роликами — сразу при старте и в каждой итерации, не только во сне
+            if not dry and maybe_weekly_quiz(state):
+                save_state(state)
+                git_persist()
             if poll_approvals(state):
                 save_state(state)
                 git_persist()
@@ -1322,6 +1389,11 @@ def main(argv):
 
     if "--loop" in argv:
         return loop(dry)
+    if "--quiz" in argv:  # викторина недели сейчас (для проверки: DRY_RUN=1 — только показать)
+        state = load_state()
+        if maybe_weekly_quiz(state, dry) and not dry:
+            save_state(state)
+        return
     if "--approvals" in argv:  # только обработать кнопки под роликами
         state = load_state()
         if poll_approvals(state):

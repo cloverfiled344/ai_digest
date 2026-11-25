@@ -345,3 +345,10 @@ video:
   categories: [MANUAL, CIS, WORLD]   # из каких рубрик и в каком приоритете
   channel: "Fish or not Fish"        # название в конце ролика
   socials: ["Telegram: t.me/official_bait_news"]                        # строки в конце ролика и под подписью Instagram, например "Telegram: @..."
+
+# Викторина «Проверь себя» в конце недели: 3 вопроса-квиза по разборам недели
+quiz:
+  enabled: true
+  weekday: 6        # 0 — понедельник … 6 — воскресенье
+  time: "19:30"     # по Бишкеку
+  questions: 3
