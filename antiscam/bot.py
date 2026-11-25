@@ -1203,8 +1203,8 @@ ALL_UPDATES = ["message", "channel_post", "my_chat_member", "callback_query"]
 
 
 def chat_candidates(state=None):
-    """Куда слать: секрет TELEGRAM_CHAT_ID, потом chat_id, с которым последний раз всё получилось."""
-    ids = [env("TELEGRAM_CHAT_ID"), str((state or {}).get("chat_id") or "")]
+    """Куда слать: channel_id из config.yaml, секрет TELEGRAM_CHAT_ID, потом chat_id, с которым последний раз всё получилось."""
+    ids = [str(CONFIG.get("channel_id") or ""), env("TELEGRAM_CHAT_ID"), str((state or {}).get("chat_id") or "")]
     return list(dict.fromkeys(i for i in ids if i))
 
 
@@ -1265,9 +1265,9 @@ def send_post(text, preview_url=None, silent=False, state=None, large=False):
             real_id = (data.get("result", {}).get("chat") or {}).get("id") or chat_id
             if state is not None:
                 state["chat_id"] = real_id
-            if chat_id != env("TELEGRAM_CHAT_ID"):
-                log(f"⚠️ Канал из секрета ANTISCAM_CHAT_ID не найден, отправил в {real_id}. "
-                    f"Поставь в секрет это число, чтобы не зависеть от запасного варианта.")
+            if chat_id not in (env("TELEGRAM_CHAT_ID"), str(CONFIG.get("channel_id") or "")):
+                log(f"⚠️ Канал из настроек не найден, отправил в {real_id}. "
+                    f"Поставь это число в channel_id (config.yaml).")
             return data.get("result", {}).get("message_id") or True
         if not any(e in (data.get("description") or "").lower() for e in CHAT_ERRORS):
             break
@@ -1478,7 +1478,7 @@ def admin_id():
 def publish_video(v, state):
     """Ролик в канал одним сообщением с текстом поста; исходный текстовый пост удаляется (replace).
     Старые записи с reply_to публикуются по-старому — ответом на пост."""
-    chat = chat_candidates(state)[-1] if chat_candidates(state) else env("TELEGRAM_CHAT_ID")
+    chat = chat_candidates(state)[0] if chat_candidates(state) else env("TELEGRAM_CHAT_ID")
     payload = {"chat_id": chat, "video": v["file_id"], "caption": v.get("caption", ""),
                "parse_mode": "HTML", "supports_streaming": True}
     if v.get("reply_to"):
@@ -1577,7 +1577,7 @@ def maybe_weekly_quiz(state, dry=False):
     if not data or not data.get("questions"):
         log("Викторина: ИИ не ответил — попробую позже")
         return False
-    chat = chat_candidates(state)[-1] if chat_candidates(state) else env("TELEGRAM_CHAT_ID")
+    chat = chat_candidates(state)[0] if chat_candidates(state) else env("TELEGRAM_CHAT_ID")
     intro = "🧠 <b>Проверь себя: схемы недели</b>\n\n" + esc((data.get("intro") or "")[:300])
     if dry:
         log("Тестовый режим, викторина:\n" + json.dumps(data, ensure_ascii=False, indent=1))
@@ -1647,7 +1647,7 @@ def maybe_fake_or_real(state, dry=False):
         if not img:
             log("«Обман или правда?»: картинка не собралась — пропускаю")
         return False
-    chat = chat_candidates(state)[-1] if chat_candidates(state) else env("TELEGRAM_CHAT_ID")
+    chat = chat_candidates(state)[0] if chat_candidates(state) else env("TELEGRAM_CHAT_ID")
     token = env("TELEGRAM_BOT_TOKEN")
     with open(img, "rb") as f:
         r = requests.post(f"https://api.telegram.org/bot{token}/sendPhoto", timeout=60,
@@ -1716,7 +1716,7 @@ def maybe_weekly_digest(state, dry=False):
     log("\n──────── дайджест ────────\n" + text)
     if dry:
         return False
-    chat = chat_candidates(state)[-1] if chat_candidates(state) else env("TELEGRAM_CHAT_ID")
+    chat = chat_candidates(state)[0] if chat_candidates(state) else env("TELEGRAM_CHAT_ID")
     tg_call("sendMessage", {"chat_id": chat, "text": text, "parse_mode": "HTML", "link_preview_options": {"is_disabled": True}})
     state["digest_week"] = week
     return True
