@@ -93,6 +93,8 @@ def format_digest(digest: dict, status: dict[str, int | None]) -> list[str]:
     blocks = [f"💡 <b>Идеи дня · {_today()}</b>"]
     counts = {k: sum(1 for i in digest["ideas"] if i.get("it_level") == k) for k in IT_LEVEL}
     blocks[0] += "\n" + " · ".join(f"{IT_LEVEL[k]} {n}" for k, n in counts.items() if n)
+    if qa_n := len(digest.get("reddit_qa") or []):
+        blocks[0] += f" · ❓ вопросов с Reddit: {qa_n}"
     if digest.get("trend_of_day"):
         blocks[0] += f"\n\n<b>Тренд дня.</b> {_e(digest['trend_of_day'])}"
 
@@ -119,8 +121,32 @@ def format_digest(digest: dict, status: dict[str, int | None]) -> list[str]:
             lines.append(f"🔗 {links}")
         blocks.append("\n".join(lines))
 
+    blocks += _qa_blocks(digest.get("reddit_qa") or [], start=len(digest["ideas"]) + 1)
     blocks.append(_footer(status))
     return _pack(blocks)
+
+
+def _qa_blocks(qa: list[dict], start: int) -> list[str]:
+    """Рубрика «Вопросы и решения с Reddit»."""
+    blocks = []
+    for n, item in enumerate(qa, start):
+        q = item["source"]
+        lines = [f"<b>❓ ВОПРОСЫ И РЕШЕНИЯ · REDDIT</b>", ""] if n == start else []
+        lines += [
+            f"<b>{n}. {_e(item['question'])}</b>",
+            f"<i>r/{_e(q.sub)} · {q.num_comments} комментариев</i>",
+            "",
+            f"<b>Ситуация:</b> {_e(item['context'])}",
+            f"<b>Как решить:</b> {_e(item['answer'])}",
+        ]
+        if item.get("community", "").strip():
+            lines.append(f"<b>Что советуют на Reddit:</b> {_e(item['community'])}")
+        lines += [
+            f"<b>💡 Идея</b> ({IT_LEVEL.get(item.get('it_level'), '💡')}): {_e(item['idea'])}",
+            f'🔗 <a href="{escape(q.url, quote=True)}">вопрос на Reddit</a>',
+        ]
+        blocks.append("\n".join(lines))
+    return blocks
 
 
 def format_fallback(items: list[Item], status: dict[str, int | None], reason: str, per_source: int = 3) -> list[str]:

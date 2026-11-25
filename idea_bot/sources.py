@@ -12,7 +12,7 @@ import os
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 import feedparser
@@ -193,22 +193,52 @@ def fetch_huggingface(s: requests.Session) -> list[Item]:
 
 # ── Reddit ────────────────────────────────────────────────────────────────────
 
+_reddit_direct_ok = True  # после первого отказа Reddit не стучимся к нему напрямую
+
+
+def _arctic(s: requests.Session, path: str, **params) -> list[dict]:
+    """Открытый архив Reddit (Arctic Shift): работает там, где сам Reddit блокирует сервер."""
+    r = s.get(f"{cfg.ARCTIC_SHIFT_API}/{path}", params=params, timeout=TIMEOUT * 2)
+    if r.status_code in (422, 429):  # «Timeout. Maybe slow down a bit» или лимит запросов
+        time.sleep(min(int(r.headers.get("x-ratelimit-reset") or 5), 30))
+        r = s.get(f"{cfg.ARCTIC_SHIFT_API}/{path}", params=params, timeout=TIMEOUT * 2)
+    r.raise_for_status()
+    return r.json().get("data") or []
+
+
+_POST_FIELDS = "id,title,selftext,score,num_comments,link_flair_text,created_utc,over_18,author"
+
+
+def _post_url(sub: str, post: dict) -> str:
+    return post.get("permalink") or f"https://www.reddit.com/r/{sub}/comments/{post.get('id')}/"
+
+
+def _arctic_posts(s: requests.Session, sub: str, min_age_h: float, max_age_h: float) -> list[dict]:
+    now = time.time()
+    posts = _arctic(s, "posts/search", subreddit=sub, limit=100, fields=_POST_FIELDS,
+                    after=int(now - max_age_h * 3600), before=int(now - min_age_h * 3600))
+    # рейтинг в архиве замораживается в момент сохранения, а число комментариев обновляется —
+    # поэтому сортируем по обсуждаемости
+    posts.sort(key=lambda p: p.get("num_comments") or 0, reverse=True)
+    return posts
+
+
 def _reddit_posts(s: requests.Session, sub: str) -> list[dict]:
-    try:
-        data = _get_json(s, f"https://www.reddit.com/r/{sub}/top.json",
-                         params={"t": "day", "limit": cfg.REDDIT_PER_SUB * 2})
-        return [c["data"] for c in data["data"]["children"]]
-    except Exception:
-        # С облачных IP Reddit часто отвечает 403 на JSON — пробуем RSS
-        time.sleep(2)
-        r = s.get(f"https://www.reddit.com/r/{sub}/top/.rss", params={"t": "day"}, timeout=TIMEOUT)
-        if r.status_code == 429:  # просит подождать — ждём и пробуем ещё раз
-            time.sleep(min(int(r.headers.get("retry-after") or 10), 30))
-            r = s.get(f"https://www.reddit.com/r/{sub}/top/.rss", params={"t": "day"}, timeout=TIMEOUT)
-        r.raise_for_status()
-        feed = feedparser.parse(r.content)
-        return [{"title": e.get("title", ""), "permalink": e.get("link", ""),
-                 "selftext": e.get("summary", ""), "score": None} for e in feed.entries]
+    global _reddit_direct_ok
+    if _reddit_direct_ok:
+        try:
+            data = _get_json(s, f"https://www.reddit.com/r/{sub}/top.json",
+                             params={"t": "day", "limit": cfg.REDDIT_PER_SUB * 2})
+            return [c["data"] for c in data["data"]["children"]]
+        except Exception as e:
+            # С облачных IP (в том числе GitHub) Reddit отвечает 403/429 — идём через архив
+            log.info("Reddit напрямую недоступен (%s), беру из архива Arctic Shift", str(e)[:80])
+            _reddit_direct_ok = False
+    posts = _arctic_posts(s, sub, 0, 36)
+    for p in posts:
+        p["score"] = None  # замороженный рейтинг вводит в заблуждение — не показываем его
+        p.setdefault("permalink", _post_url(sub, p))
+    return posts
 
 
 def fetch_reddit(s: requests.Session) -> list[Item]:
@@ -216,7 +246,7 @@ def fetch_reddit(s: requests.Session) -> list[Item]:
     failures = 0
     for n, sub in enumerate(cfg.REDDIT_SUBS):
         if n:
-            time.sleep(3)  # Reddit режет частые запросы (429)
+            time.sleep(3 if _reddit_direct_ok else 1)  # Reddit режет частые запросы (429)
         try:
             posts = _reddit_posts(s, sub)
         except Exception as e:
@@ -239,7 +269,7 @@ def fetch_reddit(s: requests.Session) -> list[Item]:
             if link.startswith("/"):
                 link = "https://www.reddit.com" + link
             metric = (f"{score} апвоутов, {p.get('num_comments', 0)} комментариев"
-                      if score is not None else "топ дня")
+                      if score is not None else f"{p.get('num_comments') or 0} комментариев")
             items.append(Item(
                 source=f"Reddit · r/{sub}",
                 title=title,
@@ -252,6 +282,93 @@ def fetch_reddit(s: requests.Session) -> list[Item]:
             if taken >= cfg.REDDIT_PER_SUB:
                 break
     return items
+
+
+# ── Reddit: вопросы для рубрики «Вопросы и решения» ───────────────────────────
+
+@dataclass
+class Question:
+    sub: str
+    title: str
+    url: str
+    body: str = ""
+    num_comments: int = 0
+    answers: list[str] = field(default_factory=list)  # лучшие ответы из комментариев
+    post_id: str = ""
+    op: str = ""                                       # автор вопроса — его ответы не считаем
+
+
+_QUESTION_RE = re.compile(
+    r"\?\s*$|^(how|what|why|which|where|who|when|is there|are there|has anyone|have you|anyone|does|do you|"
+    r"did|should|can|could|would|any (advice|tips|recommendations?|suggestions?)|looking for|need (help|advice)|"
+    r"help|advice|struggling)\b", re.I)
+_NOT_QUESTION_RE = re.compile(r"\b(hiring|for hire|giveaway|promo code|discount|weekly thread|megathread|"
+                              r"\[for hire\]|\[hiring\]|i built|i made|launched)\b", re.I)
+
+
+def _is_question(post: dict) -> bool:
+    title = post.get("title") or ""
+    flair = (post.get("link_flair_text") or "").lower()
+    if _NOT_QUESTION_RE.search(title):
+        return False
+    return bool(_QUESTION_RE.search(title.strip())) or any(w in flair for w in ("question", "help", "advice"))
+
+
+def _top_answers(s: requests.Session, post_id: str, op: str) -> list[str]:
+    comments = _arctic(s, "comments/search", link_id=post_id, limit=100, fields="body,score,parent_id,author")
+    good = []
+    for c in comments:
+        body = (c.get("body") or "").strip()
+        if (not (c.get("parent_id") or "").startswith("t3_")          # только ответы на сам вопрос
+                or c.get("author") in ("AutoModerator", op, "[deleted]")
+                or body in ("[deleted]", "[removed]") or len(body) < 60):
+            continue
+        good.append((c.get("score") or 0, len(body), body))
+    good.sort(reverse=True)
+    return [clean(b, 350) for _, _, b in good[: cfg.REDDIT_QA_TOP_COMMENTS]]
+
+
+def fetch_reddit_questions(s: requests.Session | None = None, skip=lambda url: False) -> list[Question]:
+    """Самые обсуждаемые вопросы последних дней из REDDIT_QA_SUBS вместе с лучшими ответами."""
+    if cfg.REDDIT_QA_COUNT <= 0:
+        return []
+    s = s or _session()
+    candidates: list[Question] = []
+    for n, sub in enumerate(cfg.REDDIT_QA_SUBS):
+        if n:
+            time.sleep(1)
+        try:
+            posts = _arctic_posts(s, sub, cfg.REDDIT_QA_MIN_AGE_HOURS, cfg.REDDIT_QA_MAX_AGE_HOURS)
+        except Exception as e:
+            log.info("Вопросы r/%s недоступны: %s", sub, str(e)[:120])
+            continue
+        taken = 0
+        for p in posts:
+            if (p.get("stickied") or p.get("over_18") or (p.get("num_comments") or 0) < cfg.REDDIT_QA_MIN_COMMENTS
+                    or not _is_question(p) or _blocked(p.get("title", ""), p.get("selftext", ""))
+                    or (p.get("selftext") or "").strip() in ("[removed]", "[deleted]")):
+                continue
+            url = _post_url(sub, p)
+            if not p.get("id") or skip(url):
+                continue
+            candidates.append(Question(sub=sub, title=p["title"].strip(), url=url, body=clean(p.get("selftext"), 500),
+                                       num_comments=p.get("num_comments") or 0,
+                                       post_id=p.get("id") or "", op=p.get("author") or ""))
+            taken += 1
+            if taken >= 4:  # не больше 4 вопросов с одного сабреддита
+                break
+    if not candidates:
+        raise RuntimeError("архив Reddit не вернул ни одного вопроса")
+
+    candidates.sort(key=lambda q: q.num_comments, reverse=True)
+    picked = candidates[: cfg.REDDIT_QA_CANDIDATES]
+    for q in picked:
+        time.sleep(1)
+        try:
+            q.answers = _top_answers(s, q.post_id, q.op)
+        except Exception as e:
+            log.info("Комментарии к %s недоступны: %s", q.url, str(e)[:80])
+    return picked
 
 
 # ── Product Hunt ──────────────────────────────────────────────────────────────

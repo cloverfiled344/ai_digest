@@ -10,7 +10,7 @@ from urllib.parse import urlsplit
 import anthropic
 
 from . import config as cfg
-from .sources import Item
+from .sources import Item, Question
 from .state import State
 
 log = logging.getLogger(__name__)
@@ -68,13 +68,32 @@ IDEA_SCHEMA = {
     "additionalProperties": False,
 }
 
+QA_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "question_id": {"type": "integer", "description": "Номер вопроса [QN]"},
+        "question": {"type": "string", "description": "Суть вопроса по-русски, одно короткое предложение"},
+        "context": {"type": "string", "description": "Кто спрашивает и в какой он ситуации, одно предложение"},
+        "answer": {"type": "string", "description": "Примерный ответ: конкретное решение или шаги, 2–4 коротких предложения"},
+        "community": {"type": "string", "description": "Что советуют в комментариях, 1–2 предложения; "
+                                                       "пустая строка, если ответов из комментариев не дали"},
+        "idea": {"type": "string", "description": "Какой продукт или услугу можно сделать из этой боли и кто заплатит, 1–2 предложения"},
+        "it_level": {"type": "string", "enum": ["it", "near_it", "non_it"], "description": "Тип идеи, как у идей дня"},
+    },
+    "required": ["question_id", "question", "context", "answer", "community", "idea", "it_level"],
+    "additionalProperties": False,
+}
+
 DIGEST_SCHEMA = {
     "type": "object",
     "properties": {
         "trend_of_day": {"type": "string", "description": "Главный тренд дня по всем сигналам, 2 предложения"},
         "ideas": {"type": "array", "items": IDEA_SCHEMA},
+        "reddit_qa": {"type": "array", "items": QA_SCHEMA,
+                      "description": f"Рубрика «Вопросы и решения с Reddit»: до {cfg.REDDIT_QA_COUNT} вопросов; "
+                                     "пустой список, если вопросов не дали"},
     },
-    "required": ["trend_of_day", "ideas"],
+    "required": ["trend_of_day", "ideas", "reddit_qa"],
     "additionalProperties": False,
 }
 
@@ -126,7 +145,19 @@ SYSTEM = f"""Ты — венчурный аналитик и опытный ин
 - opportunity — конкретный угол атаки для соло-разработчика или маленькой команды: для кого, какую боль \
 решает, чем отличиться от оригинала. Не «сделайте аналог».
 - Краткость: what, why, opportunity — максимум 2 коротких предложения каждое; signal — 2–3 самых сильных факта, без пересказа новостей; monetization — одно предложение. Вся идея — не длиннее ~800 символов. Номера сигналов в квадратных скобках в текст не вставляй.
-- Пиши по-русски, ёмко и без воды. Названия продуктов и термины оставляй как есть."""
+- Пиши по-русски, ёмко и без воды. Названия продуктов и термины оставляй как есть.
+
+Рубрика «Вопросы и решения с Reddit» (reddit_qa, до {cfg.REDDIT_QA_COUNT} шт.):
+- Тебе дают отдельный список вопросов [QN], которые люди задали на Reddit, с лучшими ответами из \
+комментариев. Выбери самые полезные для читателя: реальная боль бизнеса или специалиста, за решение \
+которой платят, особенно если её можно закрыть софтом, AI или автоматизацией. Пропускай личные \
+жалобы, споры о политике и вопросы, где нет полезного ответа.
+- answer — твой собственный практичный ответ, как ответил бы опытный консультант: конкретные шаги, \
+инструменты, цифры-ориентиры. Если ответ зависит от страны или ситуации, скажи от чего.
+- community — только то, что реально есть в приведённых комментариях, своими словами. Если там \
+спорят, так и напиши. Не выдумывай советов, которых нет.
+- idea — продукт или услуга из этой боли: для кого, что делает, как берёт деньги. Предпочитай it и near_it.
+- Не повторяй вопросы, которые совпадают с идеями дня."""
 
 _REGION_TAG = {"world": "Мир", "cis": "СНГ", "central_asia": "ЦА"}
 
@@ -142,7 +173,18 @@ def _format_items(items: list[Item]) -> str:
     return "\n".join(lines)
 
 
-def _build_prompt(items: list[Item], state: State) -> str:
+def _format_questions(questions: list[Question]) -> str:
+    blocks = []
+    for i, q in enumerate(questions):
+        lines = [f"[Q{i}] r/{q.sub} | {q.num_comments} комментариев | {q.title}"]
+        if q.body:
+            lines.append(f"  Текст: {q.body}")
+        lines += [f"  Ответ из комментариев: {a}" for a in q.answers]
+        blocks.append("\n".join(lines))
+    return "\n".join(blocks)
+
+
+def _build_prompt(items: list[Item], state: State, questions: list[Question] | None = None) -> str:
     parts = [f"Сегодня {date.today().isoformat()}.", f"Профиль читателя:\n{cfg.USER_PROFILE}"]
     if state.feedback:
         wishes = "\n".join(f"- {f['text']}" for f in state.feedback)
@@ -151,17 +193,24 @@ def _build_prompt(items: list[Item], state: State) -> str:
         recent = "\n".join(f"- {r['title']}" for r in state.recent_ideas[-30:])
         parts.append(f"Уже присланные идеи (не повторяй их и близкие к ним):\n{recent}")
     parts.append(f"Сигналы ({len(items)} шт.):\n{_format_items(items)}")
+    if questions:
+        parts.append(f"Вопросы с Reddit для рубрики reddit_qa ({len(questions)} шт.):\n{_format_questions(questions)}")
+    else:
+        parts.append("Вопросов с Reddit сегодня нет — верни reddit_qa пустым списком.")
     return "\n\n".join(parts)
 
 
-def analyze(items: list[Item], state: State) -> dict:
-    """Возвращает {'trend_of_day': str, 'ideas': [...]}; у каждой идеи есть 'sources': [Item]."""
+def analyze(items: list[Item], state: State, questions: list[Question] | None = None) -> dict:
+    """Возвращает {'trend_of_day': str, 'ideas': [...], 'reddit_qa': [...]}.
+
+    У каждой идеи есть 'sources': [Item], у каждого вопроса — 'source': Question."""
     client = anthropic.Anthropic()
-    prompt = _build_prompt(items, state)
+    questions = questions or []
+    prompt = _build_prompt(items, state, questions)
 
     response = client.messages.create(
         model=cfg.CLAUDE_MODEL,
-        max_tokens=12000,
+        max_tokens=16000,
         system=SYSTEM,
         messages=[{"role": "user", "content": prompt}],
         output_config={"format": {"type": "json_schema", "schema": DIGEST_SCHEMA}},
@@ -198,4 +247,15 @@ def analyze(items: list[Item], state: State) -> dict:
 
     if not ideas:
         raise RuntimeError("Claude не вернул ни одной идеи")
-    return {"trend_of_day": data.get("trend_of_day", ""), "ideas": ideas}
+
+    qa, seen = [], set()
+    for item in data.get("reddit_qa", []):
+        i = item.get("question_id")
+        if not isinstance(i, int) or not 0 <= i < len(questions) or i in seen:
+            continue  # вопрос, которого не было в данных, — отбрасываем
+        seen.add(i)
+        item["source"] = questions[i]
+        qa.append(item)
+        if len(qa) >= cfg.REDDIT_QA_COUNT:
+            break
+    return {"trend_of_day": data.get("trend_of_day", ""), "ideas": ideas, "reddit_qa": qa}

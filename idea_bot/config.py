@@ -49,6 +49,22 @@ REDDIT_SUBS = [
 ]
 REDDIT_PER_SUB = 6
 REDDIT_MIN_SCORE = 20
+# Reddit блокирует серверы GitHub, поэтому запасной путь — открытый архив Reddit Arctic Shift
+ARCTIC_SHIFT_API = "https://arctic-shift.photon-reddit.com/api"
+
+# ── Рубрика «❓ Вопросы и решения с Reddit» ─────────────────────────────────────
+# Бот берёт вопросы, которые люди задают в этих сабреддитах, а Claude даёт примерный
+# ответ, пересказывает, что советуют в комментариях, и предлагает идею продукта из этой боли.
+REDDIT_QA_SUBS = [
+    "smallbusiness", "Entrepreneur", "SaaS", "startups", "indiehackers",
+    "n8n", "automation", "AI_Agents", "nocode", "ecommerce", "freelance", "marketing",
+]
+REDDIT_QA_COUNT = 3           # сколько вопросов в дайджесте (0 — выключить рубрику)
+REDDIT_QA_MIN_AGE_HOURS = 18  # вопросу нужно время, чтобы собрать ответы в комментариях
+REDDIT_QA_MAX_AGE_HOURS = 96
+REDDIT_QA_MIN_COMMENTS = 5
+REDDIT_QA_CANDIDATES = 24     # сколько лучших вопросов отдаём Claude на выбор
+REDDIT_QA_TOP_COMMENTS = 3    # сколько лучших ответов из комментариев показываем Claude
 
 NEWS_FEEDS = {
     "TechCrunch · AI": "https://techcrunch.com/category/artificial-intelligence/feed/",
