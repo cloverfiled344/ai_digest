@@ -144,16 +144,16 @@ def fake_llm(system, user, key):
     if "Выбери до 3" in user:
         return json.dumps({"ids": ids[:3], "duplicates": []})
     if "Свежих новостей нет" in user:
-        return json.dumps({"title": "Посылка, которую вы не заказывали", "intro": "Схема живучая.",
-                           "how_it_works": "Ссылка на «доставку».", "red_flags": ["Срочность"],
-                           "what_to_do": ["Не переходите по ссылке"], "ky": ""}, ensure_ascii=False)
+        return json.dumps({"title": "Посылка, которую ты не заказывал", "emoji": "📦", "says": "Ваша посылка задержана",
+                           "trap": "Ссылка ведёт на поддельный сайт.", "todo": ["Не жми на ссылку"], "ky": ""},
+                          ensure_ascii=False)
     material = user.split("Материал:")[-1]
     loc = next((v for k, v in LOCATIONS if k in material),
                {"location": "Кыргызстан, Бишкек", "flag": "🇰🇬", "country_tag": "Кыргызстан", "scheme": "prepayment"})
-    return json.dumps({**loc, "title": "Разбор <b>истории</b>", "what_happened": "Брали деньги, сайт https://evil-pay.site",
-                       "how_it_works": "Низкая цена и срочность.", "red_flags": ["Цена ниже рынка", "Торопят"],
-                       "what_to_do": ["Звоните в банк"], "for_us": "Да, у нас похожие SMS тоже ходят.", "ky": ""},
-                      ensure_ascii=False)
+    return json.dumps({**loc, "title": "Разбор <b>истории</b>", "emoji": "💳",
+                       "says": "Оплатите на сайте https://evil-pay.site", "trap": "Низкая цена и срочность.",
+                       "todo": ["Позвони в банк", "Не плати заранее"], "what": "Пишут продавцы", "do": "Не плати заранее",
+                       "for_us": "Да, у нас похожие SMS тоже ходят.", "ky": ""}, ensure_ascii=False)
 
 
 def today_rec(i, category, **extra):
@@ -230,16 +230,16 @@ def test_full_day(cfg, fake_net, monkeypatch):
         assert text.startswith("📍 <b>")
         for tag in ("b", "i", "a"):
             assert text.count(f"<{tag}") == text.count(f"</{tag}>"), (tag, text)
-        assert bot.visible_len(text) < 4096 and "@test_bot" in text and "#разбор" in text
+        assert bot.visible_len(text) < 1500 and "@test_bot" in text
     cis_text = next(t for c, t, _ in posted if c == "CIS")
-    assert "📍 <b>🇰🇬 Кыргызстан, Бишкек</b>" in cis_text and "#СНГ" in cis_text and "#Кыргызстан" in cis_text
+    assert "📍 <b>🇰🇬 Кыргызстан, Бишкек</b>" in cis_text and "#Кыргызстан" in cis_text and "Перешли родителям" in cis_text
     assert "#предоплата" in cis_text
     assert "Разбор &lt;b&gt;истории&lt;/b&gt;" in cis_text            # HTML от ИИ экранирован
     assert "hxxps://evil-pay[.]site" in cis_text and "https://evil-pay.site" not in cis_text
-    assert "Может ли это случиться у нас" not in cis_text
+    assert "У нас:" not in cis_text and "<b>Что пишут:</b>" in cis_text
     us_text = next(t for c, t, _ in posted if "США, Техас" in t)
-    assert "📍 <b>🇺🇸 США, Техас</b>" in us_text and "Может ли это случиться у нас" in us_text
-    assert "#мир" in us_text and "#США" in us_text and "#фишинг" in us_text
+    assert "📍 <b>🇺🇸 США, Техас</b>" in us_text and "🌍 <b>У нас:</b>" in us_text
+    assert "#США" in us_text and "#фишинг" in us_text
     de_text = next((t for c, t, _ in posted if "Германия" in t), None)
     if de_text:  # при 5 постах в день до Германии может не дойти
         assert "#фишинг" in de_text                                   # ИИ ответил хэштегом — распознан
@@ -567,12 +567,13 @@ def test_formats(cfg, fake_net, monkeypatch):
     assert bot.pick_format(state) == "featured"
     state["featured_day"] = "2026-11-26"
     assert bot.pick_format(state) == "flash"
-    data = {"location": "Украина", "flag": "🇺🇦", "country_tag": "Украина", "scheme": "phishing",
-            "title": "Фейковые штрафы за ПДД", "summary": "Приходит <b>уведомление</b> со ссылкой.", "main_flag": "Штрафы не шлют в мессенджер."}
+    data = {"location": "Украина", "flag": "🇺🇦", "country_tag": "Украина", "scheme": "phishing", "emoji": "🚓",
+            "title": "Штраф за ПДД в Telegram", "what": "Приходит <b>уведомление</b> со ссылкой", "trap": "Ссылка поддельная",
+            "do": "Проверь штраф в официальном приложении"}
     item = {"link": "https://informator.ua/1", "source": "informator.ua"}
     t = bot.build_flash(cfg, data, "WORLD", item)
-    assert t.startswith("⚡ <b>Молния · 🇺🇦 Украина</b>") and "#молния" in t and "&lt;b&gt;" in t
-    assert "🚩 <b>Главный признак:</b>" in t and bot.visible_len(t) < 700
+    assert t.startswith("⚡ <b>Молния · 🇺🇦 Украина</b>") and "&lt;b&gt;" in t and "#Украина" in t
+    assert "📩 " in t and "❌ Ссылка поддельная" in t and "✅ Проверь" in t and bot.visible_len(t) < 400
 
 
 def test_weekly_digest(cfg, monkeypatch):

@@ -126,11 +126,12 @@ def channel_caption(post, meta):
     title = e(tg.get("title") or post.get("title"))
     flags = [e(f) for f in (tg.get("flags") or [])[:3] if f]
     todo = [e(t) for t in (tg.get("todo") or [])[:2] if t]
-    parts = [f"📍 <b>{loc.group(1)}</b>" if loc else "", f"⚠️ <b>{title}</b>",
-             f"<b>Как работает схема</b>\n{e(tg.get('how'))}" if tg.get("how") else e(meta.get("threads_text")),
-             ("<b>🚩 Признаки обмана</b>\n" + "\n".join(f"• {f}" for f in flags)) if flags else "",
-             ("<b>✅ Что делать</b>\n" + "\n".join(f"• {t}" for t in todo)) if todo else "",
-             (src_line.group(0) if (src_line := re.search(r"📰 Источник:[^\n]*", src)) else ""), tags]
+    parts = [f"📍 <b>{loc.group(1)}</b>" if loc else "", f"🎬 <b>{title}</b>",
+             f"<b>В чём подвох:</b> {e(tg.get('how'))}" if tg.get("how") else e(meta.get("threads_text")),
+             ("<b>Признаки:</b>\n" + "\n".join(f"❌ {f}" for f in flags)) if flags else "",
+             ("<b>Что делать:</b>\n" + "\n".join(f"✅ {t}" for t in todo)) if todo else "",
+             (src_line.group(0) if (src_line := re.search(r"📰 Источник:[^\n]*", src)) else ""),
+             "👇 Перешли родителям — пусть тоже знают", tags]
     parts = [p for p in parts if p]
     visible = lambda ps: len(re.sub(r"<[^>]+>", "", H.unescape("\n\n".join(ps))))  # noqa: E731
     while visible(parts) > 1000 and len(parts) > 3:  # не влезает — убираем разделы с конца (кроме хэштегов)
