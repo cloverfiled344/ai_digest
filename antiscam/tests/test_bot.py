@@ -593,3 +593,7 @@ def test_weekly_digest(cfg, monkeypatch):
     assert text.startswith("🗓 <b>Схемы недели: 5 главных</b>") and "https://t.me/official_bait_news/62" in text
     assert "19:30" in text and state["digest_week"] == "2026-W48"
     assert bot.maybe_weekly_digest(state) is False
+
+
+def test_cis_country_check():
+    assert bot.is_cis_country("Россия") and bot.is_cis_country(" кыргызстан ") and not bot.is_cis_country("Испания")
