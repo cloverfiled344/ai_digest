@@ -865,7 +865,12 @@ SHARE_LINE = "{{SHARE}}"  # заменяется на одну из share_lines 
 
 
 def fill_share(text, cfg, state):
-    """Подставляет следующую фразу-призыв поделиться (по кругу через все share_lines)."""
+    """Подставляет следующую фразу-призыв поделиться и правило канала (по кругу через share_lines и rule_lines)."""
+    if RULE_LINE in text:
+        rules = cfg.get("rule_lines") or [cfg.get("rule_line", "")]
+        j = state.get("rule_idx", 0) % len(rules)
+        state["rule_idx"] = j + 1
+        text = text.replace(RULE_LINE, rules[j])
     if SHARE_LINE not in text:
         return text
     lines = cfg.get("share_lines") or ["👇 Перешли родителям — пусть тоже знают"]
@@ -874,9 +879,12 @@ def fill_share(text, cfg, state):
     return text.replace(SHARE_LINE, lines[i])
 
 
+RULE_LINE = "{{RULE}}"  # заменяется на одно из rule_lines — по очереди
+
+
 def rule_line(cfg):
-    """Одно постоянное правило канала в каждом посте (как «Stop · Challenge · Protect» у Take Five)."""
-    return (cfg.get("rule_line") or "").strip()
+    """Правило канала в каждом посте (как «Stop · Challenge · Protect» у Take Five): несколько формулировок по кругу."""
+    return RULE_LINE if (cfg.get("rule_lines") or cfg.get("rule_line")) else ""
 
 
 def _d(cfg):
