@@ -11,6 +11,9 @@ night_slots: ["00:17", "06:17"]
 catchup_gap_minutes: 40
 catchup_window_hours: 3
 
+# Минимум символов текста статьи для разбора: без подробностей пост не публикуется
+min_article_chars: 600
+
 # Сколько часов назад смотреть новости
 lookback_hours: 36
 

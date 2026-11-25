@@ -437,10 +437,23 @@ def candidates_for(cands, category, limit=30):
     return [c for c in cands if c["category"] in (category, None)][:limit]
 
 
+def resolve_google_news(url):
+    """Ссылка Google News → настоящая ссылка на статью (иначе текст не прочитать). "" — если не вышло."""
+    try:
+        from googlenewsdecoder import gnewsdecoder
+        res = gnewsdecoder(url, interval=None, timeout=10)
+        return res.get("decoded_url", "") if isinstance(res, dict) and res.get("status") else ""
+    except Exception as ex:
+        log(f"  (не удалось раскрыть ссылку Google News: {type(ex).__name__})")
+        return ""
+
+
 def fetch_article_text(url, limit=3500):
     """Достаёт основной текст статьи (для точного пересказа). Не страшно, если не вышло."""
     if "news.google.com" in url:
-        return ""
+        url = resolve_google_news(url)
+        if not url:
+            return ""
     try:
         r = SESSION.get(url, timeout=15)
         r.raise_for_status()
@@ -624,6 +637,7 @@ def llm_write_story(story, category, cfg):
 "scheme": "вид схемы, ровно один ключ из списка: {scheme_keys}",
 "what_happened": "2–3 предложения: что произошло",
 {STORY_FIELDS},
+"enough_details": true или false — false, если в материале нет описания, как именно обманывали (только заголовок или общие слова); тогда остальные поля можно не заполнять,
 "for_us": "{'1–2 предложения: может ли такая схема встретиться в СНГ и как она могла бы выглядеть у нас' if abroad else ''}"}}
 {kyrgyz_instruction()}
 
@@ -755,13 +769,24 @@ def make_story(cfg, cands, category, mix=(Counter(), Counter())):
     if not chosen:
         return None
     attach_texts(chosen)
-    # сначала истории, у которых удалось прочитать текст статьи (порядок качества от ИИ сохраняется)
-    ordered = sorted(chosen, key=lambda c: len(c.get("text", "")) <= 500)
+    # пустые посты не публикуем: нужен текст статьи (или содержательное описание из ленты),
+    # иначе ИИ напишет «подробностей нет» по одному заголовку
+    min_chars = cfg.get("min_article_chars", 600)
+    rich = [c for c in chosen if len(c.get("text") or "") >= min_chars or len(c.get("summary") or "") >= min_chars]
+    for c in chosen:
+        if c not in rich:
+            log(f"  [{c['id']}] пропускаю: не удалось прочитать подробности ({len(c.get('text') or '')} симв.)")
+    if not rich:
+        return None
+    ordered = sorted(rich, key=lambda c: -len(c.get("text") or ""))
 
     picked = fallback = None
     for story in ordered[:2]:  # не больше двух разборов за запуск
         data = llm_write_story(story, category, cfg)
         if not data or not data.get("title"):
+            continue
+        if data.get("enough_details") is False:
+            log(f"  [{story['id']}] ИИ: в материале нет описания схемы — пропускаю")
             continue
         meta = {"scheme": scheme_key(cfg, data.get("scheme")), "country": (data.get("country_tag") or "").strip()}
         if not over_limit(cfg, meta, mix):
@@ -774,7 +799,7 @@ def make_story(cfg, cands, category, mix=(Counter(), Counter())):
         return None
 
     story, data, meta = picked
-    preview = story["link"] if "news.google.com" not in story["link"] else None
+    preview = story["link"] if "news.google.com" not in story["link"] else (story.get("real_link") or None)
     extra = [c for c in chosen if c is not story and similar(c["norm"], story["norm"])]
     return build_story(cfg, data, category, item=story), preview, expand_dups([story] + extra + dups), meta
 
