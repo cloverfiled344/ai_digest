@@ -230,7 +230,7 @@ def test_full_day(cfg, fake_net, monkeypatch):
             assert text.count(f"<{tag}") == text.count(f"</{tag}>"), (tag, text)
         assert bot.visible_len(text) < 1500 and "@test_bot" in text
     cis_text = next(t for c, t, _ in posted if c == "CIS")
-    assert "📍 <b>🇰🇬 Кыргызстан, Бишкек</b>" in cis_text and "#Кыргызстан" in cis_text and "Перешли родителям" in cis_text
+    assert "📍 <b>🇰🇬 Кыргызстан, Бишкек</b>" in cis_text and "#Кыргызстан" in cis_text and "{{SHARE}}" not in cis_text
     assert "#предоплата" in cis_text
     assert "Разбор &lt;b&gt;истории&lt;/b&gt;" in cis_text            # HTML от ИИ экранирован
     assert "hxxps://evil-pay[.]site" in cis_text and "https://evil-pay.site" not in cis_text
@@ -623,3 +623,9 @@ def test_fake_or_real(cfg, monkeypatch):
     assert bot.maybe_fake_or_real(state) is True
     assert sent[0].endswith("/sendPhoto") and polls[0][1]["correct_option_id"] == 1    # настоящее → «Правда»
     assert bot.maybe_fake_or_real(state) is False                                       # второй раз в тот же день — нет
+
+
+def test_share_lines_rotate(cfg):
+    state = {}
+    seen = [bot.fill_share("текст\n\n{{SHARE}}", cfg, state).split("\n\n")[-1] for _ in range(len(cfg["share_lines"]) + 1)]
+    assert len(set(seen[:-1])) == len(cfg["share_lines"]) >= 15 and seen[-1] == seen[0]

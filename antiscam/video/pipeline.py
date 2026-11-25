@@ -131,7 +131,7 @@ def channel_caption(post, meta):
              ("<b>Признаки:</b>\n" + "\n".join(f"❌ {f}" for f in flags)) if flags else "",
              ("<b>Что делать:</b>\n" + "\n".join(f"✅ {t}" for t in todo)) if todo else "",
              (src_line.group(0) if (src_line := re.search(r"📰 Источник:[^\n]*", src)) else ""),
-             "👇 Перешли родителям — пусть тоже знают", tags]
+             __import__("random").choice(CFG.get("share_lines") or ["👇 Перешли родителям — пусть тоже знают"]), tags]
     parts = [p for p in parts if p]
     visible = lambda ps: len(re.sub(r"<[^>]+>", "", H.unescape("\n\n".join(ps))))  # noqa: E731
     while visible(parts) > 1000 and len(parts) > 3:  # не влезает — убираем разделы с конца (кроме хэштегов)
