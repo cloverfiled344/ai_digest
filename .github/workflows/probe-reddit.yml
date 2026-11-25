@@ -7,14 +7,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          UA="idea-bot/1.0 (personal trend digest)"
-          A=$(( $(date +%s) - 3*86400 ))
-          for u in \
-            "https://www.reddit.com/r/smallbusiness/top.json?t=day&limit=3" \
-            "https://old.reddit.com/r/smallbusiness/top.json?t=day&limit=3" \
-            "https://www.reddit.com/r/smallbusiness/search.rss?q=flair%3AQuestion&restrict_sr=1&sort=top&t=week" \
-            "https://api.pullpush.io/reddit/search/submission/?subreddit=smallbusiness&size=3&sort_type=score&sort=desc&after=$A" \
-            "https://arctic-shift.photon-reddit.com/api/posts/search?subreddit=smallbusiness&limit=3&after=$A&sort=desc" \
-            "https://arctic-shift.photon-reddit.com/api/comments/search?subreddit=smallbusiness&limit=2" \
-            "https://www.redditstatic.com" \
-            ; do echo "=== $u"; curl -s -m 25 -A "$UA" -o o -w "HTTP %{http_code}\n" "$u"; head -c 700 o; echo; sleep 2; done
+          B="https://arctic-shift.photon-reddit.com/api"
+          A=$(( $(date +%s) - 4*86400 )); Z=$(( $(date +%s) - 1*86400 ))
+          F="fields=id,title,score,num_comments,link_flair_text,created_utc,subreddit"
+          curl -s -m 30 "$B/posts/search?subreddit=smallbusiness&limit=100&after=$A&before=$Z&$F" -o p.json -D h.txt; grep -i "ratelimit\|x-" h.txt
+          python3 - <<'PY'
+          import json,collections
+          d=json.load(open('p.json'))['data']; print('posts',len(d))
+          d.sort(key=lambda x:-(x.get('num_comments') or 0))
+          for p in d[:12]: print(p['score'],p['num_comments'],p.get('link_flair_text'),'|',p['title'][:90], p['id'])
+          print(collections.Counter(p.get('link_flair_text') for p in d))
+          open('id','w').write(d[0]['id'])
+          PY
+          ID=$(cat id)
+          echo "== tree"; curl -s -m 30 "$B/comments/tree?link_id=$ID&limit=10" | head -c 600; echo
+          echo "== csearch"; curl -s -m 30 "$B/comments/search?link_id=$ID&limit=20&fields=body,score,parent_id" | python3 -c "import json,sys; d=json.load(sys.stdin)['data']; print(len(d)); [print(c['score'],c['parent_id'][:3],c['body'][:120].replace('\n',' ')) for c in sorted(d,key=lambda c:-c['score'])[:5]]"
+          echo "== multi"; curl -s -m 30 "$B/posts/search?subreddit=SaaS,Entrepreneur&limit=5&after=$A&$F" | head -c 400; echo
+          echo "== title q"; curl -s -m 30 "$B/posts/search?subreddit=n8n&title=how&limit=5&after=$A&$F" | head -c 500
