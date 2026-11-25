@@ -831,6 +831,11 @@ def make_story(cfg, cands, category, mix=(Counter(), Counter())):
     for c in chosen:
         if c not in rich:
             log(f"  [{c['id']}] пропускаю: не удалось прочитать подробности ({len(c.get('text') or '')} симв.)")
+    if not rich:  # у выбранных ИИ историй текст не прочитался — пробуем следующие из списка
+        extra = [c for c in cands if c not in chosen and c not in dups][:8]
+        attach_texts(extra)
+        rich = [c for c in extra if len(c.get("text") or "") >= min_chars][:2]
+        log(f"  запасные истории с текстом: {[c['id'] for c in rich] or 'нет'}")
     if not rich:
         return None
     ordered = sorted(rich, key=lambda c: -len(c.get("text") or ""))
