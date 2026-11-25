@@ -676,6 +676,15 @@ def llm_pick(cands, category, cfg, mix=(Counter(), Counter())):
     return chosen, dups
 
 
+# Страны СНГ: история о них — рубрика СНГ, даже если пришла из «мировой» ленты (и наоборот)
+CIS_COUNTRIES = {"кыргызстан", "киргизия", "казахстан", "узбекистан", "таджикистан", "туркменистан", "туркмения",
+                 "россия", "рф", "беларусь", "белоруссия", "армения", "азербайджан", "молдова", "молдавия", "грузия"}
+
+
+def is_cis_country(name):
+    return (name or "").strip().lower().replace("ё", "е") in CIS_COUNTRIES
+
+
 # Формат текущего поста: "featured" — «Схема дня» (полный разбор + картинка), "flash" — «⚡ Молния»,
 # "full" — обычный разбор (если форматы выключены в config.yaml → formats.enabled: false)
 FORMAT = "full"
@@ -881,6 +890,9 @@ def make_story(cfg, cands, category, mix=(Counter(), Counter())):
                 log(f"  [{story['id']}] ИИ: в материале нет описания схемы — пропускаю")
                 continue
             meta = {"scheme": scheme_key(cfg, data.get("scheme")), "country": (data.get("country_tag") or "").strip()}
+            if meta["country"] and category in ("CIS", "WORLD") and is_cis_country(meta["country"]) != (category == "CIS"):
+                log(f"  [{story['id']}] {meta['country']} — не рубрика «{cname(category)}», пробую следующую историю")
+                continue
             if not over_limit(cfg, meta, mix):
                 picked = (story, data, meta)
                 break
