@@ -199,14 +199,18 @@ _reddit_direct_ok = True  # после первого отказа Reddit не �
 def _arctic(s: requests.Session, path: str, **params) -> list[dict]:
     """Открытый архив Reddit (Arctic Shift): работает там, где сам Reddit блокирует сервер."""
     r = s.get(f"{cfg.ARCTIC_SHIFT_API}/{path}", params=params, timeout=TIMEOUT * 2)
-    if r.status_code == 429:
+    if r.status_code in (422, 429):  # «Timeout. Maybe slow down a bit» или лимит запросов
         time.sleep(min(int(r.headers.get("x-ratelimit-reset") or 5), 30))
         r = s.get(f"{cfg.ARCTIC_SHIFT_API}/{path}", params=params, timeout=TIMEOUT * 2)
     r.raise_for_status()
     return r.json().get("data") or []
 
 
-_POST_FIELDS = "id,title,selftext,score,num_comments,permalink,link_flair_text,created_utc,stickied,over_18,author"
+_POST_FIELDS = "id,title,selftext,score,num_comments,link_flair_text,created_utc,over_18,author"
+
+
+def _post_url(sub: str, post: dict) -> str:
+    return post.get("permalink") or f"https://www.reddit.com/r/{sub}/comments/{post.get('id')}/"
 
 
 def _arctic_posts(s: requests.Session, sub: str, min_age_h: float, max_age_h: float) -> list[dict]:
@@ -233,6 +237,7 @@ def _reddit_posts(s: requests.Session, sub: str) -> list[dict]:
     posts = _arctic_posts(s, sub, 0, 36)
     for p in posts:
         p["score"] = None  # замороженный рейтинг вводит в заблуждение — не показываем его
+        p.setdefault("permalink", _post_url(sub, p))
     return posts
 
 
@@ -343,9 +348,8 @@ def fetch_reddit_questions(s: requests.Session | None = None, skip=lambda url: F
                     or not _is_question(p) or _blocked(p.get("title", ""), p.get("selftext", ""))
                     or (p.get("selftext") or "").strip() in ("[removed]", "[deleted]")):
                 continue
-            link = p.get("permalink") or ""
-            url = "https://www.reddit.com" + link if link.startswith("/") else link
-            if not url or skip(url):
+            url = _post_url(sub, p)
+            if not p.get("id") or skip(url):
                 continue
             candidates.append(Question(sub=sub, title=p["title"].strip(), url=url, body=clean(p.get("selftext"), 500),
                                        num_comments=p.get("num_comments") or 0,
@@ -359,7 +363,7 @@ def fetch_reddit_questions(s: requests.Session | None = None, skip=lambda url: F
     candidates.sort(key=lambda q: q.num_comments, reverse=True)
     picked = candidates[: cfg.REDDIT_QA_CANDIDATES]
     for q in picked:
-        time.sleep(0.5)
+        time.sleep(1)
         try:
             q.answers = _top_answers(s, q.post_id, q.op)
         except Exception as e:
