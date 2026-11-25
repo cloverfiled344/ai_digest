@@ -629,3 +629,10 @@ def test_share_lines_rotate(cfg):
     state = {}
     seen = [bot.fill_share("текст\n\n{{SHARE}}", cfg, state).split("\n\n")[-1] for _ in range(len(cfg["share_lines"]) + 1)]
     assert len(set(seen[:-1])) == len(cfg["share_lines"]) >= 15 and seen[-1] == seen[0]
+
+
+def test_rule_lines_rotate(cfg):
+    state = {}
+    outs = [bot.fill_share("x\n\n{{RULE}}\n\n{{SHARE}}", cfg, state) for _ in range(4)]
+    rules = [o.split("\n\n")[1] for o in outs]
+    assert rules == cfg["rule_lines"] and all("{{" not in o for o in outs)
