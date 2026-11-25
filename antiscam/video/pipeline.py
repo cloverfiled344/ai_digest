@@ -121,6 +121,9 @@ def channel_caption(post, meta):
 
 def send_for_review(chat, out_dir, post, meta):
     """Ролик админу с кнопками. Возвращает file_id видео в Telegram (по нему ролик потом уйдёт в канал)."""
+    # чтобы нажатия кнопок точно доходили до бота (Telegram помнит allowed_updates прошлого getUpdates)
+    tg("getUpdates", json={"timeout": 0, "limit": 1,
+                           "allowed_updates": ["message", "channel_post", "my_chat_member", "callback_query"]})
     cap = channel_caption(post, meta)
     why = f"\n\n🤔 Почему этот пост: {post['why']}" if post.get("why") else ""
     head = "🎬 Новый ролик на проверку. Так он выйдет в канале (ответом на исходный пост):\n\n"

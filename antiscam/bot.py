@@ -898,6 +898,11 @@ CHAT_ERRORS = ("chat not found", "not a member", "kicked", "not enough rights", 
                "chat_write_forbidden", "chat_admin_required")
 
 
+# Telegram запоминает allowed_updates из последнего getUpdates. Если указать список без callback_query,
+# нажатия кнопок под роликами перестанут доходить. Поэтому везде передаём полный список.
+ALL_UPDATES = ["message", "channel_post", "my_chat_member", "callback_query"]
+
+
 def chat_candidates(state=None):
     """Куда слать: секрет TELEGRAM_CHAT_ID, потом chat_id, с которым последний раз всё получилось."""
     ids = [env("TELEGRAM_CHAT_ID"), str((state or {}).get("chat_id") or "")]
@@ -907,7 +912,7 @@ def chat_candidates(state=None):
 def discover_channels():
     """Каналы, где бот админ (по свежим обновлениям). Берём, только если такой канал один — чтобы не ошибиться."""
     try:
-        _, data = tg_call("getUpdates", {"allowed_updates": ["channel_post", "my_chat_member"]})
+        _, data = tg_call("getUpdates", {"allowed_updates": ALL_UPDATES})
     except SystemExit:
         return []
     found = {}
@@ -969,7 +974,7 @@ def send_post(text, preview_url=None, silent=False, state=None):
 
 
 def find_chat():
-    status, data = tg_call("getUpdates", {"allowed_updates": ["message", "channel_post", "my_chat_member"]})
+    status, data = tg_call("getUpdates", {"allowed_updates": ALL_UPDATES})
     if not data.get("ok"):
         raise SystemExit(f"Ошибка: {data.get('description')} — проверьте TELEGRAM_BOT_TOKEN")
     chats = {}
@@ -1096,7 +1101,7 @@ def poll_approvals(state):
     if not pending or not admin or not env("TELEGRAM_BOT_TOKEN"):
         return False
     _, data = tg_call("getUpdates", {"offset": state.get("tg_offset", 0), "timeout": 0,
-                                     "allowed_updates": ["callback_query"]})
+                                     "allowed_updates": ALL_UPDATES})
     changed = False
     for upd in data.get("result", []) if data.get("ok") else []:
         state["tg_offset"] = upd["update_id"] + 1
