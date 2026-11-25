@@ -13,10 +13,11 @@ import logging
 import os
 import re
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
 from . import config as cfg
 from .formatter import format_digest, format_fallback
-from .sources import collect_all
+from .sources import collect_all, fetch_reddit_questions
 from .state import State
 from .telegram import Telegram, sync_feedback
 
@@ -62,8 +63,19 @@ def main() -> int:
         state.save()
         return 0
 
-    # 2. сбор сигналов
-    items, status = collect_all()
+    # 2. сбор сигналов; вопросы с Reddit собираем параллельно
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        qa_future = pool.submit(fetch_reddit_questions, skip=state.was_sent)
+        items, status = collect_all()
+        try:
+            questions = qa_future.result()
+            log.info("Вопросы Reddit → %d кандидатов, с ответами: %d",
+                     len(questions), sum(1 for q in questions if q.answers))
+        except Exception as e:
+            log.warning("Вопросы Reddit → ошибка: %s", str(e)[:160])
+            questions = None
+    if cfg.REDDIT_QA_COUNT > 0:
+        status["Вопросы Reddit"] = None if questions is None else len(questions)
     fresh = [it for it in items if not state.was_sent(it.url)]
     log.info("Всего сигналов: %d, новых: %d", len(items), len(fresh))
     if not fresh:
@@ -82,7 +94,7 @@ def main() -> int:
     else:
         try:
             from .analyzer import analyze
-            digest = analyze(fresh, state)
+            digest = analyze(fresh, state, questions)
         except Exception as e:
             log.exception("Claude не справился")
             reason = f"Claude недоступен ({type(e).__name__}), поэтому сегодня — сигналы без разбора."
@@ -104,6 +116,7 @@ def main() -> int:
     # 5. память: что отправили — больше не предлагаем
     if digest:
         urls = [s.url for idea in digest["ideas"] for s in idea["sources"]]
+        urls += [q["source"].url for q in digest.get("reddit_qa", [])]
         state.mark_sent(urls, [idea["title"] for idea in digest["ideas"]])
     state.save()
     return 0
