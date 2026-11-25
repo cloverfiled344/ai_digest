@@ -1649,6 +1649,24 @@
    "date": "2026-11-25",
    "category": "CIS",
    "counted": false
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMitgFBVV95cUxNODJrUUF1bjE5SUY1UlpKZm8wZmMwMEk0WUFHRUFfNWcyNUE4a1FmUERrNUs1RGgybEIySGRLckJzY2xvVzI3bGJQa2xJWWljXzFvWDVobk80Q1ZQVUtNTDNOUG1WcTBYbmhPNkR1V1BwYWJpQWhBbVRsdEFiLURXamx1WDFpWjZzUHd3anprQjlieHhXbEI2WUZsQ0xKWnFUUmtHdG1KN1diUGkzb3c3TE5zZjdqQQ?oc=5",
+   "title": "Фейковые штрафы за ПДД в Telegram: украинцев предупредили о новой схеме мошенничества",
+   "ts": "2026-11-25T06:18:06.811492+00:00",
+   "date": "2026-11-25",
+   "category": "WORLD",
+   "counted": true,
+   "scheme": "phishing",
+   "country": "Украина"
+  },
+  {
+   "url": "https://news.google.com/rss/articles/CBMi0wFBVV95cUxNa1lRckxKU2VtMndyVThLRW9GZkF6VXNFNFVCYmstbmE3SkJzRTBZNHdyMWliMVoxblJvOFY1Rm45c3ZiZ2FBeHVqcGR4YXQ1ZE1Lb0FCa2lTNW5rMzVVeEkyNHlFSzdVaEpCM2swQXdQaXdLS3ZqSktTcHFpTVI5MDZjT3NsVlZ4b3l3aUx4OHFaUXBDckw4VjMzNVBFT0o1Sjh5ZE1pcUFTaEZESEEzYUhZWXkyWU9URG1OS3hWQzk5aUNSTnJoWjJ0VVJlODVQbWc4?oc=5",
+   "title": "Водителям рассылают фейковые штрафы за нарушение ПДД: как не попасться на новую схему мошенничества",
+   "ts": "2026-11-25T06:18:06.811492+00:00",
+   "date": "2026-11-25",
+   "category": "WORLD",
+   "counted": false
   }
  ],
  "evergreen_index": 1,
@@ -1678,6 +1696,17 @@
    "country": "Россия",
    "text": "📍 <b>🇷🇺 Россия</b>\n\n⚠️ <b>Новая уловка мошенников: самозапрет на кредиты и «Госуслуги»</b>\n\n<b>Что случилось</b>\nПоявилась новая схема обмана, в которой мошенники используют самозапрет на кредиты и портал «Госуслуги». Подробностей в материале нет, известно только это из заголовка.\n\n<b>Как работает схема</b>\nПодробности схемы в материале не раскрыты. Судя по заголовку, мошенники прикрываются известной услугой самозапрета на кредиты и именем портала «Госуслуги». Обычно в таких случаях людей пугают или торопят, чтобы они сами назвали данные или сделали то, о чём просят. Проверяйте любую «помощь с защитой от кредитов» только через официальный сайт или приложение.\n\n<b>🚩 Признаки обмана</b>\n• Кто-то сам пишет или звонит и говорит от имени «Госуслуг» или другого госоргана\n• Вас торопят: «сделайте срочно, иначе оформят кредит»\n• Просят назвать код из SMS, пароль или данные карты\n• Присылают ссылку, а не предлагают зайти на сайт самостоятельно\n\n<b>✅ Как защититься</b>\n• Не называйте коды из SMS и пароли никому, даже если собеседник представился сотрудником госоргана. Положите трубку и сами зайдите в официальное приложение или на сайт.\n• Самозапрет на кредиты оформляйте только на официальном портале, который открыли сами, а не по ссылке из сообщения.\n• Если уже передали данные или деньги, сразу позвоните в банк по номеру на карте и заблокируйте её. Затем обратитесь в полицию.\n\n📰 Источник: <a href=\"https://news.google.com/rss/articles/CBMirAFBVV95cUxPM1E2ZHpjZDlwejJESklSbHh1b004ZE5aYk1tYjFoNEZfWGhxRmdTSXM0VjcyalRFYkhYeVFMMlV0QnUxS2tDM3JobUVuQXBfbmFYZ2VBT1dJc0NSWDdnTW5sTDFZSkFnMUFEdkNkVmxUS1JaRDVKdDdfYUE0emxQcDJIcmFZN2pWVUNSTElSNXg2VlpkVnJzOVYtTkpFMm5tU2VPRGlmR3V6UXJO?oc=5\">Телеканал ЯПервый</a>\n\n#звонок_из_банка #разбор #СНГ #Россия",
    "message_id": 62
+  },
+  {
+   "id": "20261125-121806",
+   "ts": "2026-11-25T06:18:06.811554+00:00",
+   "category": "WORLD",
+   "title": "Фейковые штрафы за ПДД в Telegram: украинцев предупредили о новой схеме мошенничества",
+   "link": "https://news.google.com/rss/articles/CBMitgFBVV95cUxNODJrUUF1bjE5SUY1UlpKZm8wZmMwMEk0WUFHRUFfNWcyNUE4a1FmUERrNUs1RGgybEIySGRLckJzY2xvVzI3bGJQa2xJWWljXzFvWDVobk80Q1ZQVUtNTDNOUG1WcTBYbmhPNkR1V1BwYWJpQWhBbVRsdEFiLURXamx1WDFpWjZzUHd3anprQjlieHhXbEI2WUZsQ0xKWnFUUmtHdG1KN1diUGkzb3c3TE5zZjdqQQ?oc=5",
+   "scheme": "phishing",
+   "country": "Украина",
+   "text": "📍 <b>🇺🇦 Украина</b>\n\n⚠️ <b>Поддельные штрафы за ПДД в Telegram: в Украине предупредили о новой схеме</b>\n\n<b>Что случилось</b>\nВ Украине предупредили о новой схеме мошенников. Людям в Telegram приходят поддельные сообщения о «штрафах» за нарушение правил дорожного движения. Других подробностей в материале нет.\n\n<b>Как работает схема</b>\nЧеловеку в Telegram приходит сообщение о якобы выписанном штрафе за нарушение ПДД. В таких схемах обычно торопят с оплатой и давят на страх наказания. Часто присылают ссылку или реквизиты, чтобы человек сам перевёл деньги или ввёл данные карты.\n\n<b>🚩 Признаки обмана</b>\n• Штраф пришёл в мессенджере, а не через официальные каналы\n• Вы не помните нарушения, а вас просят срочно заплатить\n• В сообщении есть ссылка или просьба ввести данные карты\n• Вам грозят увеличением суммы или наказанием, если не заплатите сразу\n\n<b>✅ Как защититься</b>\n• Не переходите по ссылкам и ничего не оплачивайте. Проверьте штрафы только на официальном сайте или в приложении госорганов.\n• Если вы уже перевели деньги или ввели данные карты, сразу позвоните в банк по номеру на обороте карты и заблокируйте её.\n• Обратитесь в полицию по номеру 102 и сохраните переписку как доказательство.\n\n<b>🌍 Может ли это случиться у нас?</b>\nТакая схема легко может появиться и у нас: мошенники могут писать от имени дорожной полиции в Telegram или WhatsApp и присылать «штраф» со ссылкой на оплату. Проверяйте штрафы только в официальных приложениях и на сайтах госорганов.\n\n📰 Источник: <a href=\"https://news.google.com/rss/articles/CBMitgFBVV95cUxNODJrUUF1bjE5SUY1UlpKZm8wZmMwMEk0WUFHRUFfNWcyNUE4a1FmUERrNUs1RGgybEIySGRLckJzY2xvVzI3bGJQa2xJWWljXzFvWDVobk80Q1ZQVUtNTDNOUG1WcTBYbmhPNkR1V1BwYWJpQWhBbVRsdEFiLURXamx1WDFpWjZzUHd3anprQjlieHhXbEI2WUZsQ0xKWnFUUmtHdG1KN1diUGkzb3c3TE5zZjdqQQ?oc=5\">informator.ua</a>\n\n#фишинг #разбор #мир #Украина",
+   "message_id": 64
   }
  ],
  "tg_offset": 563701984
