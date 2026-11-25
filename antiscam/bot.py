@@ -1125,15 +1125,24 @@ def admin_id():
 
 
 def publish_video(v, state):
-    """Ролик в канал: ответом на исходный пост, подпись — короткая версия + отсылка к разбору."""
+    """Ролик в канал одним сообщением с текстом поста; исходный текстовый пост удаляется (replace).
+    Старые записи с reply_to публикуются по-старому — ответом на пост."""
     chat = chat_candidates(state)[-1] if chat_candidates(state) else env("TELEGRAM_CHAT_ID")
-    payload = {"chat_id": chat, "video": v["file_id"], "caption": v.get("caption", "")[:1024],
-               "supports_streaming": True}
+    payload = {"chat_id": chat, "video": v["file_id"], "caption": v.get("caption", ""),
+               "parse_mode": "HTML", "supports_streaming": True}
     if v.get("reply_to"):
         payload["reply_parameters"] = {"message_id": v["reply_to"], "allow_sending_without_reply": True}
     _, data = tg_call("sendVideo", payload)
+    if not data.get("ok") and "parse" in (data.get("description") or "").lower():
+        payload["caption"] = html.unescape(re.sub(r"<[^>]+>", "", payload["caption"]))
+        payload.pop("parse_mode")
+        _, data = tg_call("sendVideo", payload)
     if not data.get("ok"):
         raise SystemExit(f"Ролик не опубликован: {data.get('description')}")
+    if v.get("replace"):
+        _, d2 = tg_call("deleteMessage", {"chat_id": chat, "message_id": v["replace"]})
+        log("Исходный пост удалён — в канале остался пост с роликом" if d2.get("ok")
+            else f"⚠️ Исходный пост не удалён: {d2.get('description')}")
     return data["result"]["message_id"]
 
 
