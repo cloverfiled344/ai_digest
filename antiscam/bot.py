@@ -929,7 +929,7 @@ def run_once(cfg, state):
     mix = (Counter({k.lower(): v for k, v in mix[0].items()}), mix[1])
     log(f"Сегодня уже опубликовано: {total} из {limit} "
         f"({', '.join(f'{cname(k)}: {v}' for k, v in stats.items()) or 'пока ничего'}); {mix_text(cfg, mix)}")
-    if total >= limit:
+    if total >= limit and not env_flag("DRY_RUN"):  # в тестовом режиме лимит не мешает посмотреть пост
         log("Дневной лимит выполнен.")
         return None
 
