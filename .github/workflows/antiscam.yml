@@ -13,7 +13,7 @@ on:
         description: "Рубрика (auto — по плану дня; QUIZ — викторина недели сейчас; DIGEST — дайджест недели сейчас)"
         type: choice
         default: auto
-        options: [auto, CIS, WORLD, QUIZ, DIGEST]
+        options: [auto, CIS, WORLD, QUIZ, DIGEST, FAKE_OR_REAL]
       format:
         description: "Формат поста (auto — по времени: после 18:00 «Схема дня», иначе «Молния»)"
         type: choice
@@ -77,7 +77,7 @@ jobs:
           ANTHROPIC_MODEL: ${{ vars.ANTISCAM_MODEL || 'claude-sonnet-5-5' }}
           BOT_CTA: ${{ vars.ANTISCAM_CTA }}
           ADD_KYRGYZ: ${{ vars.ANTISCAM_ADD_KYRGYZ }}
-          CATEGORY: ${{ ((inputs.category == 'QUIZ' || inputs.category == 'DIGEST') && 'auto') || inputs.category || 'auto' }}
+          CATEGORY: ${{ ((inputs.category == 'QUIZ' || inputs.category == 'DIGEST' || inputs.category == 'FAKE_OR_REAL') && 'auto') || inputs.category || 'auto' }}
           GITHUB_TOKEN: ${{ github.token }}   # загрузка картинок в ветку media
           JINA_API_KEY: ${{ secrets.JINA_API_KEY }}   # читалка статей r.jina.ai (бесплатный ключ — без лимита 401)
           FORMAT: ${{ inputs.format != 'auto' && inputs.format || '' }}
@@ -91,6 +91,8 @@ jobs:
             FORCE=1 python antiscam/bot.py --quiz
           elif [ "${{ inputs.category }}" = "DIGEST" ]; then
             FORCE=1 python antiscam/bot.py --digest
+          elif [ "${{ inputs.category }}" = "FAKE_OR_REAL" ]; then
+            FORCE=1 python antiscam/bot.py --for
           elif [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.loop }}" = "true" ]; then
             python antiscam/bot.py --loop
           else

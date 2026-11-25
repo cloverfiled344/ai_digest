@@ -1260,7 +1260,7 @@ def pick_format(state):
     return "flash"
 
 
-def render_shot(shot):
+def render_shot(shot, variant="flags", footer_text="Пример сообщения · ссылки обезврежены"):
     """Картинка «телефон с перепиской + выноски» (Remotion, шаблон antiscam/video/src/Shot.tsx). Путь к PNG или None."""
     vdir = os.path.join(ROOT, "video")
     try:
@@ -1280,12 +1280,12 @@ def render_shot(shot):
             with open(os.path.join(pub, "timeline.json"), "w", encoding="utf-8") as f:
                 json.dump({"fps": 30, "lang": "ru", "total": cues["end"] + 2, "lines": lines, "cues": cues}, f, ensure_ascii=False)
         msgs = [m for m in shot.get("messages", []) if isinstance(m, dict)][:3]
-        data = {"variant": "flags", "contact": str(shot.get("contact") or "Неизвестный")[:24],
+        data = {"variant": variant, "contact": str(shot.get("contact") or "Неизвестный")[:24],
                 "sub": str(shot.get("sub") or "в сети")[:12],
                 "messages": [{k: str(v)[:80] for k, v in m.items() if k in ("from", "text", "link", "file")} for m in msgs],
                 "flags": [{"msg": int(f.get("msg", 0)), "text": str(f.get("text", ""))[:22]}
                           for f in shot.get("flags", [])[:3] if isinstance(f, dict) and 0 <= int(f.get("msg", 0)) < len(msgs)],
-                "footer": "Пример сообщения · ссылки обезврежены",
+                "footer": footer_text,
                 "channel": (CONFIG.get("video") or {}).get("socials", [""])[0].split(": ")[-1] if (CONFIG.get("video") or {}).get("socials") else ""}
         with open(os.path.join(pub, "shot.json"), "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False)
@@ -1534,6 +1534,72 @@ def maybe_weekly_quiz(state, dry=False):
     return True
 
 
+# ───────────────────────── «Обман или правда?» ─────────────────────────
+# Тренировка на примерах (inoculation): картинка-сообщение + опрос. Иногда сообщение настоящее —
+# чтобы подписчики учились отличать, а не начинали бояться всего подряд.
+
+FOR_PROMPT = """Сделай задание «Обман или правда?» для канала о мошенничестве (читатели из Кыргызстана и СНГ).
+Покажи одно сообщение, которое может прийти человеку в SMS или мессенджер. {kind}
+Без названий реальных банков, компаний и госорганов — пиши «Ваш банк», «Служба доставки», «Налоговая».
+Ссылки — только обезвреженные (hxxps://адрес[.]com). Суммы — в сомах.
+Настоящее сообщение должно выглядеть как настоящее: без ссылок для ввода данных, без просьб назвать код,
+с советом позвонить по номеру на карте или зайти в приложение самому.
+Объяснение — очень просто, на «ты», до 190 символов: по каким деталям это видно.
+Верни JSON: {{"is_scam": true/false, "contact": "как подписан отправитель", "sub": "SMS или бот или в сети",
+"messages": [1–3 сообщения: {{"from":"them","text":"до 80 символов"}} или {{"from":"them","link":"hxxps://...[.]com"}}],
+"explanation": "..."}}
+{recent}"""
+
+
+def maybe_fake_or_real(state, dry=False):
+    """В дни fake_or_real.days после времени — картинка-сообщение и опрос «Обман или правда?». True — опубликовано."""
+    q = CONFIG.get("fake_or_real") or {}
+    if not q.get("enabled", True):
+        return False
+    now = local_now()
+    hh, mm = (int(x) for x in str(q.get("time", "20:00")).split(":"))
+    force = env_flag("FORCE")
+    if not force and (now.weekday() not in q.get("days", [1, 4]) or (now.hour, now.minute) < (hh, mm) or now.hour >= 23):
+        return False
+    key = now.strftime("%G-W%V-") + str(now.weekday())
+    if state.get("for_day") == key and not force:
+        return False
+    import random
+    scam = random.random() >= q.get("real_share", 0.35)  # примерно каждое третье — настоящее
+    kind = ("Это ОБМАН: возьми одну из схем недели ниже и сделай правдоподобное сообщение мошенника."
+            if scam else "Это НАСТОЯЩЕЕ сообщение (банк, доставка, оператор), которое выглядит тревожно, но безопасно.")
+    posts = [p for p in state.get("recent_posts", []) if p.get("category") in ("CIS", "WORLD")][-10:]
+    plain = lambda t: html.unescape(re.sub(r"<[^>]+>", "", t or ""))  # noqa: E731
+    recent = ("Схемы недели:\n" + "\n---\n".join(plain(p["text"])[:400] for p in posts)) if scam and posts else ""
+    data = ask_llm(FOR_PROMPT.format(kind=kind, recent=recent))
+    if not data or not data.get("messages") or not isinstance(data.get("is_scam"), bool):
+        log("«Обман или правда?»: ИИ не ответил — попробую позже")
+        return False
+    log("«Обман или правда?»: " + json.dumps(data, ensure_ascii=False))
+    img = render_shot({"contact": data.get("contact"), "sub": data.get("sub"), "messages": data["messages"]},
+                      variant="plain", footer_text="Обман или правда? Ответ — в опросе 👇")
+    if dry or not img:
+        if not img:
+            log("«Обман или правда?»: картинка не собралась — пропускаю")
+        return False
+    chat = chat_candidates(state)[-1] if chat_candidates(state) else env("TELEGRAM_CHAT_ID")
+    token = env("TELEGRAM_BOT_TOKEN")
+    with open(img, "rb") as f:
+        r = requests.post(f"https://api.telegram.org/bot{token}/sendPhoto", timeout=60,
+                          data={"chat_id": chat, "parse_mode": "HTML",
+                                "caption": "🤔 <b>Обман или правда?</b>\n\nТебе пришло такое сообщение. Что скажешь? Голосуй 👇"},
+                          files={"photo": ("message.png", f, "image/png")})
+    if not r.json().get("ok"):
+        log(f"«Обман или правда?»: фото не отправилось: {r.text[:200]}")
+        return False
+    tg_call("sendPoll", {"chat_id": chat, "question": "Это сообщение — обман или правда?",
+                         "options": [{"text": "🚨 Обман"}, {"text": "✅ Правда, можно доверять"}],
+                         "type": "quiz", "is_anonymous": True, "correct_option_id": 0 if data["is_scam"] else 1,
+                         "explanation": str(data.get("explanation", ""))[:200]})
+    state["for_day"] = key
+    return True
+
+
 # ───────────────────────── дайджест недели ─────────────────────────
 
 DIGEST_PROMPT = """Выбери 5 самых полезных схем недели для поста «Схемы недели» в канале о мошенничестве.
@@ -1602,7 +1668,7 @@ def nap(seconds, state_holder):
         try:
             if load_videos() or os.path.exists(VIDEOS_PATH):
                 git_refresh()  # новые ролики на одобрение приходят коммитом из workflow «Antiscam video»
-            if maybe_weekly_digest(state_holder["state"]):
+            if maybe_weekly_digest(state_holder["state"]) | maybe_fake_or_real(state_holder["state"]):
                 save_state(state_holder["state"])
                 git_persist()
             if maybe_weekly_quiz(state_holder["state"]):
@@ -1678,7 +1744,7 @@ def loop(dry):
         git_refresh()
         state = load_state()
         try:  # нажатия кнопок под роликами — сразу при старте и в каждой итерации, не только во сне
-            if not dry and maybe_weekly_digest(state):
+            if not dry and (maybe_weekly_digest(state) | maybe_fake_or_real(state)):
                 save_state(state)
                 git_persist()
             if not dry and maybe_weekly_quiz(state):
@@ -1738,6 +1804,11 @@ def main(argv):
 
     if "--loop" in argv:
         return loop(dry)
+    if "--for" in argv:  # «Обман или правда?» сейчас (DRY_RUN=1 — только картинка в лог)
+        state = load_state()
+        if maybe_fake_or_real(state, dry) and not dry:
+            save_state(state)
+        return
     if "--digest" in argv:  # дайджест недели сейчас (DRY_RUN=1 — только показать)
         state = load_state()
         if maybe_weekly_digest(state, dry) and not dry:

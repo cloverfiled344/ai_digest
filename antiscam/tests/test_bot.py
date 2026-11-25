@@ -606,3 +606,22 @@ def test_readability_check():
     bad = {"trap": "Это фишинг через вредоносное приложение", "todo": ["Никогда и ни при каких обстоятельствах не сообщайте никому коды из SMS даже если вам звонят из банка"]}
     issues = bot.readability_issues(bad)
     assert any("фишинг" in i for i in issues) and any("вредонос" in i for i in issues) and any("длинная" in i for i in issues)
+
+
+def test_fake_or_real(cfg, monkeypatch):
+    bot.CONFIG = cfg
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:abc")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "-100555")
+    tz = bot.local_tz()
+    monkeypatch.setattr(bot, "local_now", lambda: datetime(2026, 12, 1, 20, 5, tzinfo=tz))  # вторник
+    monkeypatch.setattr(bot, "ask_llm", lambda p: {"is_scam": False, "contact": "Ваш банк", "sub": "SMS",
+                                                  "messages": [{"from": "them", "text": "Покупка 1 250 сом"}], "explanation": "Нет ссылки"})
+    monkeypatch.setattr(bot, "render_shot", lambda shot, variant="flags", footer_text="": "/dev/null")
+    sent = []
+    monkeypatch.setattr(bot.requests, "post", lambda url, **kw: sent.append(url) or FakeResp(json_data={"ok": True}))
+    polls = []
+    monkeypatch.setattr(bot, "tg_call", lambda m, p: polls.append((m, p)) or (200, {"ok": True}))
+    state = {}
+    assert bot.maybe_fake_or_real(state) is True
+    assert sent[0].endswith("/sendPhoto") and polls[0][1]["correct_option_id"] == 1    # настоящее → «Правда»
+    assert bot.maybe_fake_or_real(state) is False                                       # второй раз в тот же день — нет
