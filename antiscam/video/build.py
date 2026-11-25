@@ -84,7 +84,8 @@ def ask_claude(prompt):
             last = f"{r.status_code}"
             import time; time.sleep(10 * (attempt + 1))
             continue
-        r.raise_for_status()
+        if r.status_code != 200:
+            raise SystemExit(f"Claude ответил {r.status_code}: {r.text[:500]}")
         for b in r.json().get("content", []):
             if b.get("type") == "tool_use" and isinstance(b.get("input"), dict) and b["input"].get("lines"):
                 return b["input"]
