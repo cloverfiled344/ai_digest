@@ -91,6 +91,7 @@ class FakeResp:
 @pytest.fixture
 def cfg(tmp_path, monkeypatch):
     c = bot.load_config()
+    c.pop("channel_id", None)  # в тестах канал задаётся через TELEGRAM_CHAT_ID
     bot.CONFIG = c
     monkeypatch.setattr(bot, "STATE_PATH", str(tmp_path / "posted.json"))
     monkeypatch.setattr(bot, "LLM_ERRORS", [])
@@ -636,3 +637,9 @@ def test_rule_lines_rotate(cfg):
     outs = [bot.fill_share("x\n\n{{RULE}}\n\n{{SHARE}}", cfg, state) for _ in range(4)]
     rules = [o.split("\n\n")[1] for o in outs]
     assert rules == cfg["rule_lines"] and all("{{" not in o for o in outs)
+
+
+def test_channel_id_from_config(cfg, monkeypatch):
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "@old_name")
+    bot.CONFIG = dict(cfg, channel_id=-1004322457915)
+    assert bot.chat_candidates({"chat_id": -100555}) == ["-1004322457915", "@old_name", "-100555"]
