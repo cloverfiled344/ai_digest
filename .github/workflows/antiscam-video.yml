@@ -32,7 +32,7 @@ concurrency:
 jobs:
   video:
     runs-on: ubuntu-latest
-    timeout-minutes: 75
+    timeout-minutes: 160
     env:
       STATE_PATH: data/antiscam_state.json
     steps:
@@ -113,6 +113,20 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
         run: python antiscam/video/pipeline.py
 
+      - name: Ждать одобрения в личке (до 2 часов) и сразу опубликовать
+        # Обычно кнопку нажимают вскоре после прихода ролика — публикуем без ожидания бота канала.
+        # Если не нажали за 2 часа, кнопку обработает бот канала в своём следующем запуске.
+        if: steps.due.outputs.run == 'true' && !inputs.dry_run && hashFiles('data/antiscam_videos.json') != ''
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.ANTISCAM_TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.ANTISCAM_CHAT_ID }}
+        run: |
+          for i in $(seq 1 60); do
+            python antiscam/bot.py --approvals
+            python -c "import json,sys; v=json.load(open('data/antiscam_videos.json')); sys.exit(0 if any(x.get('status')=='pending' for x in v.values()) else 1)" || { echo "Решение получено"; break; }
+            sleep 120
+          done
+
       - uses: actions/upload-artifact@v4
         if: always() && steps.due.outputs.run == 'true'
         with:
@@ -135,6 +149,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/antiscam_videos.json 2>/dev/null || exit 0
+          git add data/antiscam_state.json 2>/dev/null || true
           git diff --cached --quiet && exit 0
           git commit -m "antiscam-video: update memory"
           for i in 1 2 3; do
