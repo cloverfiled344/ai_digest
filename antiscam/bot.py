@@ -1157,14 +1157,20 @@ def render_shot(shot):
     vdir = os.path.join(ROOT, "video")
     try:
         pub = os.path.join(vdir, "public")
-        for name, default in (("scenario.json", "scenario.example.json"), ("timeline.json", None)):
-            path = os.path.join(pub, name)
-            if not os.path.exists(path):  # шаблону роликов нужны эти файлы даже для картинки
-                if default:
-                    shutil.copy(os.path.join(pub, default), path)
-                else:
-                    with open(path, "w") as f:
-                        json.dump({"fps": 30, "lang": "ru", "total": 5, "lines": [], "cues": {"start": 0, "end": 4}}, f)
+        # шаблону роликов при сборке нужны сценарий и тайминги, даже для картинки: подкладываем согласованную пару
+        if not os.path.exists(os.path.join(pub, "scenario.json")) or not os.path.exists(os.path.join(pub, "timeline.json")):
+            with open(os.path.join(pub, "scenario.example.json"), encoding="utf-8") as f:
+                sc = json.load(f)
+            lines, cues = [], {"start": 0.0}
+            for i, ln in enumerate(sc["lines"]):
+                lid = ln.get("id") or f"s{i}"
+                lines.append({"i": i, "id": lid, "text": ln["text"], "start": i * 3.0, "dur": 2.5, "words": []})
+                cues[lid] = cues[f"L{i}"] = i * 3.0
+            cues["end"] = len(lines) * 3.0
+            with open(os.path.join(pub, "scenario.json"), "w", encoding="utf-8") as f:
+                json.dump(sc, f, ensure_ascii=False)
+            with open(os.path.join(pub, "timeline.json"), "w", encoding="utf-8") as f:
+                json.dump({"fps": 30, "lang": "ru", "total": cues["end"] + 2, "lines": lines, "cues": cues}, f, ensure_ascii=False)
         msgs = [m for m in shot.get("messages", []) if isinstance(m, dict)][:3]
         data = {"variant": "flags", "contact": str(shot.get("contact") or "Неизвестный")[:24],
                 "sub": str(shot.get("sub") or "в сети")[:12],
