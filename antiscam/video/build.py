@@ -77,7 +77,7 @@ def ask_claude(prompt):
         r = requests.post("https://api.anthropic.com/v1/messages",
                           headers={"x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
                           json={"model": model, "max_tokens": 4000, "tools": [tool],
-                                "tool_choice": {"type": "tool", "name": "scenario"},
+                                "tool_choice": {"type": "auto"},
                                 "messages": [{"role": "user", "content": prompt}]},
                           timeout=180)
         if r.status_code in (429, 500, 502, 503, 529):
@@ -86,9 +86,18 @@ def ask_claude(prompt):
             continue
         if r.status_code != 200:
             raise SystemExit(f"Claude ответил {r.status_code}: {r.text[:500]}")
-        for b in r.json().get("content", []):
+        content = r.json().get("content", [])
+        for b in content:
             if b.get("type") == "tool_use" and isinstance(b.get("input"), dict) and b["input"].get("lines"):
                 return b["input"]
+        txt = "".join(b.get("text", "") for b in content)
+        m = re.search(r"\{.*\}", txt, re.S)
+        try:
+            if m:
+                return json.loads(m.group(0))
+        except json.JSONDecodeError as ex:
+            last = f"невалидный JSON: {ex}"
+            continue
         last = "нет сценария в ответе"
     raise SystemExit(f"Claude не вернул сценарий: {last}")
 
