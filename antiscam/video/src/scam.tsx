@@ -11,7 +11,7 @@ export type Msg = { from?: "them" | "me"; text?: string; file?: string; link?: s
 export type SLine = {
   id?: string; scene: "hook" | "chat" | "trap" | "loss" | "flags" | "todo" | "outro"; text: string;
   label?: string; messages?: Msg[]; trap?: "file" | "link" | "code" | "call" | "card" | "qr"; loss?: "sms" | "account" | "money" | "contacts";
-  items?: string[]; amount?: string;
+  items?: string[]; amount?: string; page?: string; button?: string;
 };
 export type Scenario = { title_lines: string[]; contact?: string; caller?: string; channel?: string; socials?: string[]; lines: SLine[] };
 export const SC = raw as unknown as Scenario;
@@ -203,13 +203,13 @@ const LinkTrap: React.FC<{ t: number; st: number; i: number }> = ({ t, st, i }) 
       <rect x={170} y={420} width={740} height={90} rx={36} fill="#E3E8F2" />
       <rect x={200} y={445} width={680} height={44} rx={22} fill="#FFFFFF" />
       <T x={540} y={478} size={28} weight={700} fill={C.red} text={url.length > 34 ? url.slice(0, 33) + "…" : url} />
-      <T x={540} y={600} size={46} fill={C.ink} text="Вход для просмотра" />
+      <T x={540} y={600} size={46} fill={C.ink} text={SC.lines[i].page || "Подтвердите вход"} />
       <rect x={240} y={660} width={600} height={96} rx={20} fill="#F1F4FA" stroke="#C9D3E6" strokeWidth={4} />
       <T x={270} y={722} size={38} anchor="start" weight={700} fill={C.ink} text="+996 ••• •• ••" />
       <rect x={240} y={790} width={600} height={96} rx={20} fill="#F1F4FA" stroke={typed > 0 ? C.red : "#C9D3E6"} strokeWidth={4} />
       <T x={270} y={852} size={38} anchor="start" weight={700} fill={C.ink} text={typed > 0 ? `Код: ${code}` : "Код из сообщения"} />
       <rect x={240} y={930} width={600} height={100} rx={50} fill={C.blue} />
-      <T x={540} y={995} size={42} text="Смотреть видео" />
+      <T x={540} y={995} size={42} text={SC.lines[i].button || "Продолжить"} />
     </g>
   );
 };

@@ -28,7 +28,7 @@ PROMPT = """Ты сценарист коротких вертикальных р
 По посту ниже напиши сценарий 2D-анимации на русском. Ролик собирается из готовых сцен:
 - hook — первая реплика: цепляющий вопрос или фраза, которую пишет/говорит мошенник. На экране телефон с уведомлением.
 - chat — переписка или разговор с мошенником; messages — 1–3 сообщения, которые видит жертва: {{"from":"them"|"me","text":"..."}}, или файл {{"from":"them","file":"имя.apk"}}, или ссылка {{"from":"them","link":"hxxps://адрес[.]com"}}.
-- trap — ловушка, trap: file (файл-программа), link (поддельная страница входа), code (выманивают код из SMS), call (звонок «из банка/полиции»), card (данные карты).
+- trap — ловушка, trap: file (файл-программа), link (поддельная страница), code (выманивают код из SMS), call (звонок «из банка/полиции»), card (данные карты). Для link добавь page — заголовок фейковой страницы до 22 символов (например «Проверка платежа») и button — текст кнопки до 16 символов (например «Подтвердить»).
 - loss — последствия, loss: sms (перехват SMS-кодов), account (украден аккаунт), money (списали деньги, amount — сумма строкой, если она есть в посте), contacts (рассылка друзьям).
 - flags — признаки обмана, items: 2–4 пункта до 26 символов.
 - todo — как защититься, items: 2–4 пункта до 26 символов, конкретные действия.
@@ -36,7 +36,8 @@ PROMPT = """Ты сценарист коротких вертикальных р
 
 Правила:
 1. 6–8 реплик в порядке: hook, chat (можно 1–2), trap, loss (можно 1–2), flags, todo, outro. Сцены можно пропускать, если не подходят.
-2. Всего 80–105 слов. Реплики короткие, разговорные, на «ты». Без кавычек и тире. Числа пиши словами, если они не суммы.
+2. В репликах flags и todo проговаривай сами пункты своими словами, 14–22 слова: зритель должен успеть прочитать пункты на экране. Не пиши «вот признаки обмана» и подобное без содержания.
+2a. Всего 85–110 слов. Реплики короткие, разговорные, на «ты». Без кавычек и тире. Числа пиши словами, если они не суммы.
 3. Только факты из поста. Никаких имён реальных людей, названий банков, компаний и брендов — пиши «банк», «магазин», «мессенджер».
 4. label — подпись сцены заглавными, до 3 слов и 18 символов (например «ЭТО НЕ ВИДЕО»). У hook label не нужен.
 5. title_lines — 2 строки для обложки и заголовка, каждая до 10 символов, заглавными (например ["ЭТО ТЫ", "НА ВИДЕО?"]).
@@ -77,24 +78,37 @@ def ask_claude(prompt):
         r = requests.post("https://api.anthropic.com/v1/messages",
                           headers={"x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
                           json={"model": model, "max_tokens": 4000, "tools": [tool],
-                                "tool_choice": {"type": "tool", "name": "scenario"},
+                                "tool_choice": {"type": "auto"},
                                 "messages": [{"role": "user", "content": prompt}]},
                           timeout=180)
         if r.status_code in (429, 500, 502, 503, 529):
             last = f"{r.status_code}"
             import time; time.sleep(10 * (attempt + 1))
             continue
-        r.raise_for_status()
-        for b in r.json().get("content", []):
+        if r.status_code != 200:
+            raise SystemExit(f"Claude ответил {r.status_code}: {r.text[:500]}")
+        content = r.json().get("content", [])
+        for b in content:
             if b.get("type") == "tool_use" and isinstance(b.get("input"), dict) and b["input"].get("lines"):
                 return b["input"]
+        txt = "".join(b.get("text", "") for b in content)
+        m = re.search(r"\{.*\}", txt, re.S)
+        try:
+            if m:
+                return json.loads(m.group(0))
+        except json.JSONDecodeError as ex:
+            last = f"невалидный JSON: {ex}"
+            continue
         last = "нет сценария в ответе"
     raise SystemExit(f"Claude не вернул сценарий: {last}")
 
 
 def clean(s, n):
     s = re.sub(r"[«»\"“”„]", "", str(s or "")).replace("—", ",").replace("–", ",").strip()
-    return s[:n]
+    if len(s) <= n:
+        return s
+    cut = s[:n]
+    return cut[:cut.rfind(" ")] if " " in cut else cut  # режем по границе слова
 
 
 def sanitize(sc, cfg):
@@ -124,6 +138,10 @@ def sanitize(sc, cfg):
             out["messages"] = msgs
         if scene == "trap":
             out["trap"] = ln.get("trap") if ln.get("trap") in TRAPS else "link"
+            if ln.get("page"):
+                out["page"] = clean(ln["page"], 22)
+            if ln.get("button"):
+                out["button"] = clean(ln["button"], 16)
         if scene == "loss":
             out["loss"] = ln.get("loss") if ln.get("loss") in LOSSES else "money"
             if ln.get("amount"):
