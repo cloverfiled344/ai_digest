@@ -63,16 +63,16 @@ export const Phone: React.FC<{ t: number; title: string; sub?: string; children?
       <rect x={PX} y={PY} width={PW} height={PH} rx={54} fill="#E9EEF7" />
       <clipPath id="phscr"><rect x={PX} y={PY} width={PW} height={PH} rx={54} /></clipPath>
       <g clipPath="url(#phscr)">
-        <rect x={PX} y={PY + 130} width={PW} height={PH} fill="#DCE6F2" />
+        <rect x={PX} y={PY + 140} width={PW} height={PH} fill="#DCE6F2" />
         {Array.from({ length: 14 }).map((_, i) => <circle key={i} cx={PX + rand(i) * PW} cy={PY + 150 + rand(i * 3.7) * PH} r={8 + rand(i * 2.1) * 16} fill="#C9D6E8" />)}
-        <rect x={PX} y={PY} width={PW} height={130} fill="#FFFFFF" />
-        <circle cx={PX + 80} cy={PY + 72} r={38} fill={P.hunter.main} />
-        <T x={PX + 80} y={PY + 86} size={36} text={(title[0] || "?").toUpperCase()} />
-        <T x={PX + 136} y={PY + 66} size={34} anchor="start" fill={C.ink} text={title} />
-        <T x={PX + 136} y={PY + 104} size={26} anchor="start" weight={700} fill="#4E8FD9" text={sub} />
+        <rect x={PX} y={PY} width={PW} height={140} fill="#FFFFFF" />
+        <circle cx={PX + 80} cy={PY + 86} r={38} fill={P.hunter.main} />
+        <T x={PX + 80} y={PY + 100} size={36} text={(title[0] || "?").toUpperCase()} />
+        <T x={PX + 136} y={PY + 84} size={34} anchor="start" fill={C.ink} text={title.length > 20 ? title.slice(0, 19) + "…" : title} />
+        <T x={PX + 136} y={PY + 120} size={26} anchor="start" weight={700} fill="#4E8FD9" text={sub} />
         {children}
       </g>
-      <rect x={540 - 70} y={PY + 10} width={140} height={34} rx={17} fill="#0B0A1E" />
+      <rect x={540 - 60} y={PY + 8} width={120} height={26} rx={13} fill="#0B0A1E" />
     </g>
   );
 };
