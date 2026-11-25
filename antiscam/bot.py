@@ -473,11 +473,13 @@ def fetch_via_reader(url, limit=3500):
     try:
         r = SESSION.get("https://r.jina.ai/" + url, timeout=40, headers={"X-Return-Format": "text", "Accept": "text/plain"})
         if r.status_code != 200:
+            log(f"  (читалка: {r.status_code})")
             return ""
         lines = [ln.strip() for ln in r.text.splitlines()]
         text = "\n".join(ln for ln in lines if len(ln) > 60 and not ln.startswith(("http", "![", "[", "Title:", "URL Source:")))
         return text[:limit]
-    except Exception:
+    except Exception as ex:
+        log(f"  (читалка: {type(ex).__name__})")
         return ""
 
 
@@ -855,7 +857,9 @@ def make_story(cfg, cands, category, mix=(Counter(), Counter())):
     # иначе ИИ напишет «подробностей нет» по одному заголовку. Сначала истории, выбранные ИИ,
     # потом следующие из списка; не больше трёх попыток написать разбор.
     min_chars = cfg.get("min_article_chars", 600)
-    pool = chosen + [c for c in cands if c not in chosen and c not in dups][:6]
+    # запасные: сначала прямые ссылки на СМИ (их текст читается), потом ссылки Google News
+    rest = [c for c in cands if c not in chosen and c not in dups]
+    pool = chosen + sorted(rest, key=lambda c: "news.google.com" in c["link"])[:6]
     picked = fallback = None
     writes = 0
     for batch in (pool[:3], pool[3:]):
