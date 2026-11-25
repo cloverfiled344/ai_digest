@@ -45,7 +45,7 @@ PROMPT = """Ты сценарист коротких вертикальных р
 8. threads_text — короткая версия для Threads: 2–3 предложения, до 380 символов, без хэштегов и ссылок.
 9. ky — одна фраза-предупреждение на кыргызском (до 80 символов) или пустая строка, если не уверен в переводе.
 
-Верни только JSON:
+Ответь вызовом инструмента scenario с полями:
 {{"title_lines": ["...", "..."], "contact": "...", "caller": "...", "lines": [{{"scene": "hook", "text": "..."}}, ...], "ig_caption": "...", "threads_text": "...", "ky": "..."}}
 
 Пост:
@@ -63,18 +63,33 @@ def plain(html_text):
 
 
 def ask_claude(prompt):
+    """Сценарий через tool use: Claude возвращает уже разобранный JSON, без ошибок с кавычками."""
     key = os.environ["ANTHROPIC_API_KEY"]
     model = os.environ.get("VIDEO_MODEL") or os.environ.get("ANTHROPIC_MODEL") or "claude-sonnet-5-5"
-    r = requests.post("https://api.anthropic.com/v1/messages",
-                      headers={"x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-                      json={"model": model, "max_tokens": 3000, "messages": [{"role": "user", "content": prompt}]},
-                      timeout=120)
-    r.raise_for_status()
-    txt = "".join(b.get("text", "") for b in r.json().get("content", []))
-    m = re.search(r"\{.*\}", txt, re.S)
-    if not m:
-        raise SystemExit("Claude не вернул JSON сценария")
-    return json.loads(m.group(0))
+    tool = {"name": "scenario", "description": "Сценарий ролика и подписи для соцсетей",
+            "input_schema": {"type": "object", "properties": {
+                "title_lines": {"type": "array", "items": {"type": "string"}}, "contact": {"type": "string"},
+                "caller": {"type": "string"}, "lines": {"type": "array", "items": {"type": "object"}},
+                "ig_caption": {"type": "string"}, "threads_text": {"type": "string"}, "ky": {"type": "string"}},
+                "required": ["title_lines", "lines", "ig_caption", "threads_text"]}}
+    last = None
+    for attempt in range(3):
+        r = requests.post("https://api.anthropic.com/v1/messages",
+                          headers={"x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+                          json={"model": model, "max_tokens": 4000, "tools": [tool],
+                                "tool_choice": {"type": "tool", "name": "scenario"},
+                                "messages": [{"role": "user", "content": prompt}]},
+                          timeout=180)
+        if r.status_code in (429, 500, 502, 503, 529):
+            last = f"{r.status_code}"
+            import time; time.sleep(10 * (attempt + 1))
+            continue
+        r.raise_for_status()
+        for b in r.json().get("content", []):
+            if b.get("type") == "tool_use" and isinstance(b.get("input"), dict) and b["input"].get("lines"):
+                return b["input"]
+        last = "нет сценария в ответе"
+    raise SystemExit(f"Claude не вернул сценарий: {last}")
 
 
 def clean(s, n):
