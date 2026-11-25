@@ -538,7 +538,9 @@ SYSTEM_PROMPT = """Ты редактор русскоязычного Telegram-�
 4. Про конкретного человека, чья вина не установлена судом, пиши «подозреваемый» или «задержан по подозрению», а не «мошенник».
 5. Если в материале есть адрес фишингового сайта, пиши его только в обезвреженном виде: hxxps://example[.]com. Названия СМИ в тексте не упоминай — ссылка на источник добавится отдельно.
 6. Что важнее всего: новые или необычные схемы и официальные предупреждения → случаи с понятным уроком для читателя → статистика. Отсеивай всё, что не про мошенничество против людей и бизнеса, а также политику и рекламу.
-7. Тон спокойный и понятный даже пожилому человеку: без паники, без канцелярита, короткие предложения.
+7. Пиши ОЧЕНЬ просто, как другу или маме: на «ты», фразы до 12 слов, без канцелярита и без паники.
+   Никаких терминов: вместо «фишинг» — «поддельная ссылка» или «поддельный сайт», вместо «вредоносная программа» — «программа, которая крадёт деньги», вместо «социальная инженерия», «компрометация», «верификация» — обычные слова.
+   Один главный совет важнее пяти.
 Отвечай только JSON без пояснений."""
 
 
@@ -694,15 +696,24 @@ SHOT_FIELD = """"shot": {"contact": "кто пишет жертве (как по
   "messages": [2–3 сообщения мошенника, как их видит жертва: {"from":"them","text":"до 70 символов"} или {"from":"them","link":"hxxps://адрес[.]com"} (ссылки только обезвреженные) или {"from":"them","file":"имя.apk"}],
   "flags": [3 выноски-признака: {"msg": номер сообщения с 0, "text": "до 20 символов"}]}"""
 
-FLASH_FIELDS = """"title": "заголовок своими словами до 90 символов",
-"summary": "1–2 предложения, до 260 символов: что случилось и как именно обманывали",
-"main_flag": "главный признак обмана и что делать, 1–2 предложения, до 200 символов",
+FLASH_FIELDS = """"emoji": "один эмодзи по теме: 🚗 📱 💳 📦 🏦 💬 и т.п.",
+"title": "заголовок простыми словами до 60 символов, например «Я задел вашу машину»",
+"what": "что пишут или звонят мошенники — одна фраза до 120 символов",
+"trap": "в чём обман — одна фраза до 120 символов, без терминов",
+"do": "главный совет — одна фраза до 90 символов, начинается с глагола («Не жми на ссылку…»)",
+"ky": \"\""""
+
+SIMPLE_FIELDS = """"emoji": "один эмодзи по теме: 🚗 📱 💳 📦 🏦 💬 и т.п.",
+"title": "заголовок-крючок до 70 символов, простыми словами, например «Пишут, что поцарапали твою машину? Это обман»",
+"says": "что пишут или говорят мошенники — 1–2 фразы от их лица, как в настоящем сообщении, до 160 символов, без кавычек",
+"trap": "в чём подвох — 2–3 коротких предложения, до 260 символов, без терминов",
+"todo": ["3 действия до 60 символов, каждое начинается с глагола: «Не открывай ссылку»"],
 "ky": \"\""""
 
 
 def llm_write_story(story, category, cfg):
     abroad = category != "CIS" and FORMAT != "flash"
-    body = FLASH_FIELDS if FORMAT == "flash" else '"what_happened": "2–3 предложения: что произошло",\n' + STORY_FIELDS
+    body = FLASH_FIELDS if FORMAT == "flash" else SIMPLE_FIELDS
     shot = SHOT_FIELD + ",\n" if FORMAT == "featured" else ""
     scheme_keys = " | ".join(cfg.get("schemes") or {"other": None})
     prompt = f"""Сделай разбор истории [{story['id']}]. Материал может быть на любом языке — пиши только по-русски.
@@ -713,7 +724,7 @@ def llm_write_story(story, category, cfg):
 "scheme": "вид схемы, ровно один ключ из списка: {scheme_keys}",
 {body},
 {shot}"enough_details": true или false — false, если в материале нет описания, как именно обманывали (только заголовок или общие слова); тогда остальные поля можно не заполнять,
-"for_us": "{'1–2 предложения: может ли такая схема встретиться в СНГ и как она могла бы выглядеть у нас' if abroad else ''}"}}
+"for_us": "{'одно предложение до 140 символов: как это может выглядеть у нас, в СНГ' if abroad else ''}"}}
 {kyrgyz_instruction()}
 
 Виды схем:
@@ -748,6 +759,7 @@ def scheme_key(cfg, value):
 
 
 def footer(cfg, category, country_tag="", scheme=None):
+    """2 хэштега: вид схемы и страна (+ призыв из BOT_CTA, если задан)."""
     parts = []
     cta = env("BOT_CTA")
     if cta:
@@ -755,14 +767,13 @@ def footer(cfg, category, country_tag="", scheme=None):
     tags = []
     if scheme and scheme in (cfg.get("schemes") or {}):
         tags.append(cfg["schemes"][scheme]["hashtag"])
-    tags.append(cfg.get("hashtags", ""))
-    if category in cfg.get("categories", {}):
-        tags.append(cfg["categories"][category]["hashtag"])
     tag = hashtag(country_tag)
     if tag and tag not in tags:
         tags.append(tag)
+    if not tags:
+        tags.append(cfg.get("hashtags", "") or "")
     parts.append(" ".join(t for t in tags if t))
-    return "\n\n".join(parts)
+    return "\n\n".join(p for p in parts if p)
 
 
 def build_story(cfg, data, category, item=None):
@@ -802,22 +813,59 @@ def build_story(cfg, data, category, item=None):
     return text
 
 
-def build_flash(cfg, data, category, item=None):
-    """«⚡ Молния»: 4–6 строк вместо полного разбора."""
+SHARE_LINE = "👇 Перешли родителям — пусть тоже знают"
+
+
+def _d(cfg):
     safe = cfg.get("safe_domains", [])
-    d = lambda s: esc(defang(s or "", safe))  # noqa: E731
+    return lambda s: esc(defang(s or "", safe))
+
+
+def _place(data, category):
     flag = data.get("flag", "").strip()
-    flag = flag if FLAG_RE.match(flag) else "🌍"
-    location = data.get("location") or cname(category)
-    parts = [f"⚡ <b>Молния · {flag} {d(location)}</b>", f"<b>{d(data.get('title'))}</b>\n{d(data.get('summary'))}"]
-    if data.get("main_flag"):
-        parts.append(f"🚩 <b>Главный признак:</b> {d(data['main_flag'])}")
+    flag = "💡" if category == "TIP" else (flag if FLAG_RE.match(flag) else "🌍")
+    return flag, data.get("location") or ("Напоминание о схеме" if category == "TIP" else cname(category))
+
+
+def build_simple(cfg, data, category, item=None):
+    """Простой разбор («как другу»): что пишут → в чём подвох → что делать. Для «Схемы дня» и напоминаний."""
+    d = _d(cfg)
+    flag, location = _place(data, category)
+    emoji = (data.get("emoji") or "⚠️").strip()[:4]
+    parts = [f"📍 <b>{flag} {d(location)}</b>", f"{emoji} <b>{d(data.get('title'))}</b>"]
+    if data.get("says"):
+        parts.append(f"<b>Что пишут:</b> «{d(data['says'].strip('«»\" '))}»")
+    if data.get("trap"):
+        parts.append(f"<b>В чём подвох:</b> {d(data['trap'])}")
+    todo = [t for t in data.get("todo", []) if t][:3]
+    if todo:
+        parts.append("<b>Что делать:</b>\n" + "\n".join(f"✅ {d(t)}" for t in todo))
+    if category == "WORLD" and data.get("for_us"):
+        parts.append(f"🌍 <b>У нас:</b> {d(data['for_us'])}")
     if data.get("ky"):
         parts.append(f"🇰🇬 <i>{d(data['ky'])}</i>")
     if item:
         parts.append(f"📰 Источник: {source_link(item)}")
-    tags = footer(cfg, category, data.get("country_tag", ""), scheme_key(cfg, data.get("scheme")))
-    parts.append(tags + " #молния")
+    parts.append(SHARE_LINE)
+    parts.append(footer(cfg, category, data.get("country_tag", ""), scheme_key(cfg, data.get("scheme"))))
+    return "\n\n".join(p for p in parts if p.strip())
+
+
+def build_flash(cfg, data, category, item=None):
+    """«⚡ Молния» — шпаргалка: понятно за 5 секунд."""
+    d = _d(cfg)
+    flag, location = _place(data, category)
+    emoji = (data.get("emoji") or "⚠️").strip()[:4]
+    lines = [f"{emoji} <b>{d(data.get('title'))}</b>"]
+    for mark, key in (("📩", "what"), ("❌", "trap"), ("✅", "do")):
+        if data.get(key):
+            lines.append(f"{mark} {d(data[key])}")
+    parts = [f"⚡ <b>Молния · {flag} {d(location)}</b>", "\n".join(lines)]
+    if data.get("ky"):
+        parts.append(f"🇰🇬 <i>{d(data['ky'])}</i>")
+    if item:
+        parts.append(f"📰 Источник: {source_link(item)}")
+    parts.append(footer(cfg, category, data.get("country_tag", ""), scheme_key(cfg, data.get("scheme"))))
     return "\n\n".join(p for p in parts if p.strip())
 
 
@@ -908,7 +956,7 @@ def make_story(cfg, cands, category, mix=(Counter(), Counter())):
     if FORMAT == "flash":
         text = build_flash(cfg, data, category, item=story)
     else:
-        text = build_story(cfg, data, category, item=story)
+        text = build_simple(cfg, data, category, item=story)
         if FORMAT == "featured":
             text = "🔥 <b>СХЕМА ДНЯ</b>\n\n" + text
             if isinstance(data.get("shot"), dict) and data["shot"].get("messages"):
@@ -927,8 +975,7 @@ def make_evergreen(cfg, state):
 Не приводи цифр, статистики и конкретных случаев — только общеизвестную механику и советы.
 Верни JSON:
 {{"location": "Напоминание", "flag": "", "country_tag": "",
-"intro": "2 предложения: почему стоит об этом помнить",
-{STORY_FIELDS}}}
+{SIMPLE_FIELDS}}}
 {kyrgyz_instruction()}"""
     data = ask_llm(prompt)
     if not data or not data.get("title"):
@@ -936,7 +983,7 @@ def make_evergreen(cfg, state):
     data["location"] = "Напоминание о схеме"
     state["evergreen_index"] = idx + 1
     item = {"link": f"evergreen:{scheme}", "title": scheme}
-    return build_story(cfg, data, "TIP"), None, [item], {}
+    return build_simple(cfg, data, "TIP"), None, [item], {}
 
 
 def next_manual(state):
