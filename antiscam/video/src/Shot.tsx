@@ -4,7 +4,7 @@ import React from "react";
 import { AbsoluteFill } from "remotion";
 import { Bg, C, FONT } from "./kit";
 import { useFonts } from "./frame";
-import { Bubble, bubbleH, Msg, Phone, Scammer } from "./scam";
+import { Bubble, bubbleH, Msg, Phone, Scammer, wrap } from "./scam";
 import shot from "../public/shot.json";
 
 type Flag = { msg: number; text: string };
@@ -42,10 +42,13 @@ export const Shot: React.FC = () => {
               <path d={`M${bx},${by} C${bx + 60},${by} ${700},${ty} ${720},${ty}`} stroke={C.red} strokeWidth={6} fill="none" />
               <circle cx={bx} cy={by} r={10} fill={C.red} />
               <rect x={720} y={ty - 50} width={330} height={100} rx={26} fill={C.red} />
-              {f.text.split(" ").length > 2
-                ? [f.text.split(" ").slice(0, 2).join(" "), f.text.split(" ").slice(2).join(" ")].map((ln, j) =>
-                    <text key={j} x={885} y={ty - 8 + j * 40} textAnchor="middle" fontFamily={FONT} fontWeight={800} fontSize={34} fill={C.white}>{ln}</text>)
-                : <text x={885} y={ty + 12} textAnchor="middle" fontFamily={FONT} fontWeight={800} fontSize={36} fill={C.white}>{f.text}</text>}
+              {(() => {
+                const lines = wrap(f.text, 13).slice(0, 2);  // выноска — не шире плашки: до 13 символов в строке
+                const size = Math.max(...lines.map((l) => l.length)) > 13 ? 30 : 34;
+                return lines.map((ln, j) =>
+                  <text key={j} x={885} y={ty + 12 + (j - (lines.length - 1) / 2) * 40} textAnchor="middle" fontFamily={FONT}
+                    fontWeight={800} fontSize={size} fill={C.white}>{ln}</text>);
+              })()}
             </g>
           );
         })}
