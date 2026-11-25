@@ -471,7 +471,10 @@ def resolve_google_news(url, title=""):
 def fetch_via_reader(url, limit=3500):
     """Запасной способ прочитать статью: сервис r.jina.ai отдаёт текст страницы (в т.ч. с JS и редиректами)."""
     try:
-        r = SESSION.get("https://r.jina.ai/" + url, timeout=40, headers={"X-Return-Format": "text", "Accept": "text/plain"})
+        headers = {"X-Return-Format": "text", "Accept": "text/plain"}
+        if env("JINA_API_KEY"):  # без ключа читалка быстро упирается в лимит (401/429)
+            headers["Authorization"] = f"Bearer {env('JINA_API_KEY')}"
+        r = SESSION.get("https://r.jina.ai/" + url, timeout=40, headers=headers)
         if r.status_code != 200:
             log(f"  (читалка: {r.status_code})")
             return ""
