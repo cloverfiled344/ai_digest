@@ -33,6 +33,7 @@ import html
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -645,8 +646,25 @@ def llm_pick(cands, category, cfg, mix=(Counter(), Counter())):
     return chosen, dups
 
 
+# Формат текущего поста: "featured" — «Схема дня» (полный разбор + картинка), "flash" — «⚡ Молния»,
+# "full" — обычный разбор (если форматы выключены в config.yaml → formats.enabled: false)
+FORMAT = "full"
+
+SHOT_FIELD = """"shot": {"contact": "кто пишет жертве (как подписан чат: «Дорожная полиция», «Служба банка», «Айбек»)",
+  "sub": "бот или в сети",
+  "messages": [2–3 сообщения мошенника, как их видит жертва: {"from":"them","text":"до 70 символов"} или {"from":"them","link":"hxxps://адрес[.]com"} (ссылки только обезвреженные) или {"from":"them","file":"имя.apk"}],
+  "flags": [3 выноски-признака: {"msg": номер сообщения с 0, "text": "до 20 символов"}]}"""
+
+FLASH_FIELDS = """"title": "заголовок своими словами до 90 символов",
+"summary": "1–2 предложения, до 260 символов: что случилось и как именно обманывали",
+"main_flag": "главный признак обмана и что делать, 1–2 предложения, до 200 символов",
+"ky": \"\""""
+
+
 def llm_write_story(story, category, cfg):
-    abroad = category != "CIS"
+    abroad = category != "CIS" and FORMAT != "flash"
+    body = FLASH_FIELDS if FORMAT == "flash" else '"what_happened": "2–3 предложения: что произошло",\n' + STORY_FIELDS
+    shot = SHOT_FIELD + ",\n" if FORMAT == "featured" else ""
     scheme_keys = " | ".join(cfg.get("schemes") or {"other": None})
     prompt = f"""Сделай разбор истории [{story['id']}]. Материал может быть на любом языке — пиши только по-русски.
 Верни JSON:
@@ -654,9 +672,8 @@ def llm_write_story(story, category, cfg):
 "flag": "эмодзи-флаг этой страны",
 "country_tag": "страна по-русски одним словом для хэштега, например Кыргызстан, США, Германия, Бразилия",
 "scheme": "вид схемы, ровно один ключ из списка: {scheme_keys}",
-"what_happened": "2–3 предложения: что произошло",
-{STORY_FIELDS},
-"enough_details": true или false — false, если в материале нет описания, как именно обманывали (только заголовок или общие слова); тогда остальные поля можно не заполнять,
+{body},
+{shot}"enough_details": true или false — false, если в материале нет описания, как именно обманывали (только заголовок или общие слова); тогда остальные поля можно не заполнять,
 "for_us": "{'1–2 предложения: может ли такая схема встретиться в СНГ и как она могла бы выглядеть у нас' if abroad else ''}"}}
 {kyrgyz_instruction()}
 
@@ -746,6 +763,25 @@ def build_story(cfg, data, category, item=None):
     return text
 
 
+def build_flash(cfg, data, category, item=None):
+    """«⚡ Молния»: 4–6 строк вместо полного разбора."""
+    safe = cfg.get("safe_domains", [])
+    d = lambda s: esc(defang(s or "", safe))  # noqa: E731
+    flag = data.get("flag", "").strip()
+    flag = flag if FLAG_RE.match(flag) else "🌍"
+    location = data.get("location") or cname(category)
+    parts = [f"⚡ <b>Молния · {flag} {d(location)}</b>", f"<b>{d(data.get('title'))}</b>\n{d(data.get('summary'))}"]
+    if data.get("main_flag"):
+        parts.append(f"🚩 <b>Главный признак:</b> {d(data['main_flag'])}")
+    if data.get("ky"):
+        parts.append(f"🇰🇬 <i>{d(data['ky'])}</i>")
+    if item:
+        parts.append(f"📰 Источник: {source_link(item)}")
+    tags = footer(cfg, category, data.get("country_tag", ""), scheme_key(cfg, data.get("scheme")))
+    parts.append(tags + " #молния")
+    return "\n\n".join(p for p in parts if p.strip())
+
+
 def build_headline(cfg, item, category):
     """Запасной вариант без ИИ: заголовок и ссылка."""
     return "\n\n".join([
@@ -820,7 +856,15 @@ def make_story(cfg, cands, category, mix=(Counter(), Counter())):
     story, data, meta = picked
     preview = story["link"] if "news.google.com" not in story["link"] else (story.get("real_link") or None)
     extra = [c for c in chosen if c is not story and similar(c["norm"], story["norm"])]
-    return build_story(cfg, data, category, item=story), preview, expand_dups([story] + extra + dups), meta
+    if FORMAT == "flash":
+        text = build_flash(cfg, data, category, item=story)
+    else:
+        text = build_story(cfg, data, category, item=story)
+        if FORMAT == "featured":
+            text = "🔥 <b>СХЕМА ДНЯ</b>\n\n" + text
+            if isinstance(data.get("shot"), dict) and data["shot"].get("messages"):
+                meta["shot"] = data["shot"]
+    return text, preview, expand_dups([story] + extra + dups), meta
 
 
 def make_evergreen(cfg, state):
@@ -968,8 +1012,11 @@ def discover_channels():
     return list(found) if len(found) == 1 else []
 
 
-def _send(chat_id, text, preview_url, silent):
-    preview = {"url": preview_url, "prefer_small_media": True} if preview_url else {"is_disabled": True}
+def _send(chat_id, text, preview_url, silent, large=False):
+    if preview_url and large:  # картинка «Схемы дня» — крупно над текстом
+        preview = {"url": preview_url, "prefer_large_media": True, "show_above_text": True}
+    else:
+        preview = {"url": preview_url, "prefer_small_media": True} if preview_url else {"is_disabled": True}
     payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML",
                "link_preview_options": preview, "disable_notification": silent}
     status, data = tg_call("sendMessage", payload)
@@ -988,7 +1035,7 @@ def _send(chat_id, text, preview_url, silent):
     return data
 
 
-def send_post(text, preview_url=None, silent=False, state=None):
+def send_post(text, preview_url=None, silent=False, state=None, large=False):
     """Отправляет пост. Если канал из секрета не находится (сменили @адрес и т. п.) — пробует
     запомненный chat_id, а потом единственный канал, где бот админ."""
     candidates, discovered, i, data = chat_candidates(state), False, 0, {}
@@ -1002,7 +1049,7 @@ def send_post(text, preview_url=None, silent=False, state=None):
                 break
         chat_id = candidates[i]
         i += 1
-        data = _send(chat_id, text, preview_url, silent)
+        data = _send(chat_id, text, preview_url, silent, large)
         if data.get("ok"):
             real_id = (data.get("result", {}).get("chat") or {}).get("id") or chat_id
             if state is not None:
@@ -1054,8 +1101,89 @@ def is_silent(category):
     return hour >= start or hour < end if start > end else start <= hour < end
 
 
+def pick_format(state):
+    """featured — первый пост после formats.featured_from (по умолчанию 18:00), если сегодня «Схемы дня» ещё не было."""
+    f = CONFIG.get("formats") or {}
+    if not f.get("enabled", True):
+        return "full"
+    if env("FORMAT") in ("featured", "flash", "full"):  # принудительно (для проверки)
+        return env("FORMAT")
+    now = local_now()
+    hh, mm = (int(x) for x in str(f.get("featured_from", "18:00")).split(":"))
+    if (now.hour, now.minute) >= (hh, mm) and state.get("featured_day") != now.date().isoformat():
+        return "featured"
+    return "flash"
+
+
+def render_shot(shot):
+    """Картинка «телефон с перепиской + выноски» (Remotion, шаблон antiscam/video/src/Shot.tsx). Путь к PNG или None."""
+    vdir = os.path.join(ROOT, "video")
+    try:
+        pub = os.path.join(vdir, "public")
+        for name, default in (("scenario.json", "scenario.example.json"), ("timeline.json", None)):
+            path = os.path.join(pub, name)
+            if not os.path.exists(path):  # шаблону роликов нужны эти файлы даже для картинки
+                if default:
+                    shutil.copy(os.path.join(pub, default), path)
+                else:
+                    with open(path, "w") as f:
+                        json.dump({"fps": 30, "lang": "ru", "total": 5, "lines": [], "cues": {"start": 0, "end": 4}}, f)
+        msgs = [m for m in shot.get("messages", []) if isinstance(m, dict)][:3]
+        data = {"variant": "flags", "contact": str(shot.get("contact") or "Неизвестный")[:24],
+                "sub": str(shot.get("sub") or "в сети")[:12],
+                "messages": [{k: str(v)[:80] for k, v in m.items() if k in ("from", "text", "link", "file")} for m in msgs],
+                "flags": [{"msg": int(f.get("msg", 0)), "text": str(f.get("text", ""))[:22]}
+                          for f in shot.get("flags", [])[:3] if isinstance(f, dict) and 0 <= int(f.get("msg", 0)) < len(msgs)],
+                "footer": "Пример сообщения · ссылки обезврежены",
+                "channel": (CONFIG.get("video") or {}).get("socials", [""])[0].split(": ")[-1] if (CONFIG.get("video") or {}).get("socials") else ""}
+        with open(os.path.join(pub, "shot.json"), "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False)
+        out = os.path.join(vdir, "out", "shot.png")
+        cmd = ["npx", "remotion", "still", "Shot", out, "--log=error"]
+        if env("CHROME"):
+            cmd += ["--browser-executable", env("CHROME")]
+        subprocess.run(cmd, cwd=vdir, check=True, timeout=300)
+        return out
+    except Exception as ex:
+        log(f"⚠️ Картинка не собралась: {type(ex).__name__}: {ex}")
+        return None
+
+
+def upload_media(path):
+    """Картинку — в ветку media репозитория (один коммит со свежими файлами). Публичная ссылка или None."""
+    repo, token = env("GITHUB_REPOSITORY"), env("GITHUB_TOKEN")
+    if not (repo and token and path):
+        return None
+    name = local_now().strftime("%Y%m%d-%H%M%S") + ".png"
+    tmp = os.path.join("/tmp", "media-" + name)
+    remote = f"https://x-access-token:{token}@github.com/{repo}.git"
+    try:
+        r = subprocess.run(["git", "clone", "-q", "--depth", "1", "-b", "media", remote, tmp], capture_output=True)
+        if r.returncode:
+            os.makedirs(tmp, exist_ok=True)
+        shutil.rmtree(os.path.join(tmp, ".git"), ignore_errors=True)
+        files = sorted(f for f in os.listdir(tmp) if f.endswith(".png"))
+        for old in files[:-40]:  # храним 40 последних
+            os.remove(os.path.join(tmp, old))
+        shutil.copy(path, os.path.join(tmp, name))
+        cmds = [["git", "init", "-q", "-b", "media"], ["git", "add", "-A"],
+                ["git", "-c", "user.name=github-actions[bot]", "-c", "user.email=41898282+github-actions[bot]@users.noreply.github.com",
+                 "commit", "-q", "-m", "media"], ["git", "push", "-qf", remote, "media"]]
+        for c in cmds:
+            subprocess.run(c, cwd=tmp, check=True, capture_output=True)
+        return f"https://raw.githubusercontent.com/{repo}/media/{name}"
+    except Exception as ex:
+        log(f"⚠️ Картинка не загрузилась: {type(ex).__name__}")
+        return None
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def post_one(state, dry):
     """Один пост по плану. True — опубликовано."""
+    global FORMAT
+    FORMAT = pick_format(state)
+    log(f"Формат поста: {dict(featured='Схема дня', flash='Молния', full='разбор')[FORMAT]}")
     result = run_once(CONFIG, state)
     if not result:
         if LLM_ERRORS:
@@ -1065,16 +1193,23 @@ def post_one(state, dry):
 
     text, preview, used, meta, category = result
     log("\n──────── пост ────────\n" + text + "\n──────────────────────")
+    big = None
+    if meta.get("shot"):
+        log("Картинка: " + json.dumps(meta["shot"], ensure_ascii=False))
+        big = upload_media(render_shot(meta["shot"]))
+        log(f"Картинка: {big or 'не получилась — пост выйдет без неё'}")
     if dry:
         log("Тестовый режим: пост не отправлен, список опубликованного не изменён.")
         return False
-    msg_id = send_post(text, preview, silent=is_silent(category), state=state)
+    msg_id = send_post(text, big or preview, silent=is_silent(category), state=state, large=bool(big))
+    if FORMAT == "featured" and category in ("CIS", "WORLD"):
+        state["featured_day"] = local_now().date().isoformat()
     mark_posted(state, used, category, meta)
     # последние посты целиком (~8 дней) — из них раз в несколько дней выбирается пост для ролика (antiscam/video)
     state.setdefault("recent_posts", []).append({
         "id": local_now().strftime("%Y%m%d-%H%M%S"), "ts": now_utc().isoformat(), "category": category,
         "title": (used[0].get("title") if used else "") or "", "link": (used[0].get("link") if used else "") or "",
-        "scheme": meta.get("scheme"), "country": meta.get("country"), "text": text,
+        "scheme": meta.get("scheme"), "country": meta.get("country"), "text": text, "format": FORMAT,
         "message_id": msg_id if isinstance(msg_id, int) and not isinstance(msg_id, bool) else None})
     state["recent_posts"] = state["recent_posts"][-60:]
     for it in used:
@@ -1248,6 +1383,63 @@ def maybe_weekly_quiz(state, dry=False):
     return True
 
 
+# ───────────────────────── дайджест недели ─────────────────────────
+
+DIGEST_PROMPT = """Выбери 5 самых полезных схем недели для поста «Схемы недели» в канале о мошенничестве.
+Разные схемы, приоритет — то, что может случиться с читателем из СНГ. Для каждой:
+emoji — один подходящий эмодзи; name — короткое название схемы до 40 символов; line — суть в одной строке до 110 символов.
+Верни JSON: {{"items": [{{"id": "id поста", "emoji": "📱", "name": "...", "line": "..."}}]}}
+
+Посты недели:
+{posts}"""
+
+
+def maybe_weekly_digest(state, dry=False):
+    """В воскресенье после digest.time — «🗓 Схемы недели»: 5 схем со ссылками на разборы. True — опубликован."""
+    q = CONFIG.get("digest") or {}
+    if not q.get("enabled", True):
+        return False
+    now = local_now()
+    hh, mm = (int(x) for x in str(q.get("time", "19:00")).split(":"))
+    force = env_flag("FORCE")
+    if not force and (now.weekday() != q.get("weekday", 6) or (now.hour, now.minute) < (hh, mm) or now.hour >= 23):
+        return False
+    week = now.strftime("%G-W%V")
+    if state.get("digest_week") == week and not force:
+        return False
+    since = (now_utc() - timedelta(days=7)).isoformat()
+    posts = [p for p in state.get("recent_posts", []) if p.get("ts", "") >= since and p.get("category") != "TIP"
+             and p.get("message_id")]
+    if len(posts) < 3:
+        log("Дайджест: мало разборов за неделю — пропускаю")
+        state["digest_week"] = week
+        return True
+    plain = lambda t: html.unescape(re.sub(r"<[^>]+>", "", t or ""))  # noqa: E731
+    listing = "\n\n".join(f"id: {p['id']}\n{plain(p['text'])[:600]}" for p in posts[-35:])
+    data = ask_llm(DIGEST_PROMPT.format(posts=listing))
+    by_id = {p["id"]: p for p in posts}
+    items = [i for i in (data or {}).get("items", []) if i.get("id") in by_id][:5]
+    if len(items) < 3:
+        log("Дайджест: ИИ не ответил — попробую позже")
+        return False
+    user = str(q.get("channel_username") or "").lstrip("@")
+    lines = []
+    for n, it in enumerate(items, 1):
+        mid = by_id[it["id"]]["message_id"]
+        link = f' → <a href="https://t.me/{user}/{mid}">разбор</a>' if user else ""
+        lines.append(f"{n}. {esc(it.get('emoji', '•'))} <b>{esc(it.get('name', ''))}</b> — {esc(it.get('line', ''))}{link}")
+    quiz = CONFIG.get("quiz") or {}
+    tail = f"\n\n🧠 В {quiz.get('time', '19:30')} — викторина: проверь, распознаешь ли ты эти схемы." if quiz.get("enabled", True) else ""
+    text = "🗓 <b>Схемы недели: " + str(len(items)) + " главных</b>\n\n" + "\n".join(lines) + tail + "\n\n#дайджест #разбор"
+    log("\n──────── дайджест ────────\n" + text)
+    if dry:
+        return False
+    chat = chat_candidates(state)[-1] if chat_candidates(state) else env("TELEGRAM_CHAT_ID")
+    tg_call("sendMessage", {"chat_id": chat, "text": text, "parse_mode": "HTML", "link_preview_options": {"is_disabled": True}})
+    state["digest_week"] = week
+    return True
+
+
 def nap(seconds, state_holder):
     """Сон с проверкой одобрений роликов каждые 2 минуты."""
     end = time.time() + seconds
@@ -1259,6 +1451,9 @@ def nap(seconds, state_holder):
         try:
             if load_videos() or os.path.exists(VIDEOS_PATH):
                 git_refresh()  # новые ролики на одобрение приходят коммитом из workflow «Antiscam video»
+            if maybe_weekly_digest(state_holder["state"]):
+                save_state(state_holder["state"])
+                git_persist()
             if maybe_weekly_quiz(state_holder["state"]):
                 save_state(state_holder["state"])
                 git_persist()
@@ -1332,6 +1527,9 @@ def loop(dry):
         git_refresh()
         state = load_state()
         try:  # нажатия кнопок под роликами — сразу при старте и в каждой итерации, не только во сне
+            if not dry and maybe_weekly_digest(state):
+                save_state(state)
+                git_persist()
             if not dry and maybe_weekly_quiz(state):
                 save_state(state)
                 git_persist()
@@ -1389,6 +1587,11 @@ def main(argv):
 
     if "--loop" in argv:
         return loop(dry)
+    if "--digest" in argv:  # дайджест недели сейчас (DRY_RUN=1 — только показать)
+        state = load_state()
+        if maybe_weekly_digest(state, dry) and not dry:
+            save_state(state)
+        return
     if "--quiz" in argv:  # викторина недели сейчас (для проверки: DRY_RUN=1 — только показать)
         state = load_state()
         if maybe_weekly_quiz(state, dry) and not dry:

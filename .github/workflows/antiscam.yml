@@ -10,10 +10,15 @@ on:
   workflow_dispatch:             # кнопка «Run workflow» для ручного запуска
     inputs:
       category:
-        description: "Рубрика (auto — по плану дня; QUIZ — викторина недели сейчас)"
+        description: "Рубрика (auto — по плану дня; QUIZ — викторина недели сейчас; DIGEST — дайджест недели сейчас)"
         type: choice
         default: auto
-        options: [auto, CIS, WORLD, QUIZ]
+        options: [auto, CIS, WORLD, QUIZ, DIGEST]
+      format:
+        description: "Формат поста (auto — по времени: после 18:00 «Схема дня», иначе «Молния»)"
+        type: choice
+        default: auto
+        options: [auto, featured, flash]
       dry_run:
         description: "Тест: только показать пост в логе, не отправлять"
         type: boolean
@@ -50,6 +55,20 @@ jobs:
 
       - run: pip install -r antiscam/requirements.txt
 
+      # для картинки «Схемы дня» (шаблон antiscam/video/src/Shot.tsx, Remotion)
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: antiscam/video/package-lock.json
+
+      - name: Remotion для картинок
+        working-directory: antiscam/video
+        run: |
+          sudo apt-get install -y -qq fonts-noto-color-emoji > /dev/null 2>&1 || true
+          npm ci --no-audit --no-fund --silent
+          npx remotion browser ensure > /dev/null
+
       - name: Собрать новости и опубликовать
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}            # общий ключ с дайджестом
@@ -58,7 +77,9 @@ jobs:
           ANTHROPIC_MODEL: ${{ vars.ANTISCAM_MODEL || 'claude-sonnet-5-5' }}
           BOT_CTA: ${{ vars.ANTISCAM_CTA }}
           ADD_KYRGYZ: ${{ vars.ANTISCAM_ADD_KYRGYZ }}
-          CATEGORY: ${{ (inputs.category == 'QUIZ' && 'auto') || inputs.category || 'auto' }}
+          CATEGORY: ${{ ((inputs.category == 'QUIZ' || inputs.category == 'DIGEST') && 'auto') || inputs.category || 'auto' }}
+          GITHUB_TOKEN: ${{ github.token }}   # загрузка картинок в ветку media
+          FORMAT: ${{ inputs.format != 'auto' && inputs.format || '' }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
           GIT_PERSIST: "1"               # сохранять память в репозиторий после каждого поста
           LOOP_MINUTES: "330"
@@ -67,6 +88,8 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if [ "${{ inputs.category }}" = "QUIZ" ]; then
             FORCE=1 python antiscam/bot.py --quiz
+          elif [ "${{ inputs.category }}" = "DIGEST" ]; then
+            FORCE=1 python antiscam/bot.py --digest
           elif [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.loop }}" = "true" ]; then
             python antiscam/bot.py --loop
           else

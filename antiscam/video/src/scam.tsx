@@ -78,8 +78,8 @@ export const Phone: React.FC<{ t: number; title: string; sub?: string; children?
 };
 
 /** Пузырь сообщения в чате. p = 0..1 появление. Возвращает высоту. */
-const bubbleH = (m: Msg) => (m.file ? 150 : m.link ? 140 : 40 + 46 * wrap(m.text || "", 18).length);
-const Bubble: React.FC<{ m: Msg; y: number; p: number; t: number; glow?: number }> = ({ m, y, p, t, glow = 0 }) => {
+export const bubbleH = (m: Msg) => (m.file ? 150 : m.link ? 140 : 40 + 46 * wrap(m.text || "", 18).length);
+export const Bubble: React.FC<{ m: Msg; y: number; p: number; t: number; glow?: number }> = ({ m, y, p, t, glow = 0 }) => {
   if (p <= 0.01) return null;
   const me = m.from === "me", w = 400, h = bubbleH(m);
   const x = me ? PX + PW - 30 - w : PX + 30;
